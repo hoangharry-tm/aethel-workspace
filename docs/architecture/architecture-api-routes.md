@@ -19,7 +19,7 @@ This design has a specific consequence: every route must have a `permission` fie
 
 ## Runtime Configuration API
 
-The config API serves organization branding, navigation structure, and feature flags to the Nuxt SSR frontend. All endpoints under `/api/v1/config` are served from an in-memory per-org cache (5-min TTL). Admin PATCH endpoints invalidate the cache entry for the affected organization.
+The config API serves organization branding, navigation structure, and feature flags to the Nuxt SSR frontend. All endpoints under `/api/v1/config` are served from a single in-memory config cache (5-min TTL). Admin PATCH endpoints invalidate the cache so the next request re-fetches from the database.
 
 ### Read endpoints (all authenticated, `dispatch.view` minimum)
 
@@ -34,9 +34,9 @@ The config API serves organization branding, navigation structure, and feature f
 
 | Method | Pattern | Permission | Description |
 |---|---|---|---|
-| PATCH | `/api/v1/admin/config/branding` | `admin.access` | Update branding; invalidates org cache |
-| PATCH | `/api/v1/admin/config/nav` | `admin.access` | Update nav overrides; invalidates org cache |
-| PATCH | `/api/v1/admin/config/features` | `admin.access` | Update feature flags; invalidates org cache |
+| PATCH | `/api/v1/admin/config/branding` | `admin.access` | Update branding; invalidates config cache |
+| PATCH | `/api/v1/admin/config/nav` | `admin.access` | Update nav overrides; invalidates config cache |
+| PATCH | `/api/v1/admin/config/features` | `admin.access` | Update feature flags; invalidates config cache |
 | PATCH | `/api/v1/admin/config/org` | `admin.access` | Update org profile |
 
 ### Cache invalidation pattern

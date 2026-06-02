@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Aethel Workspace is a configuration-driven e-office platform. Its defining architectural trait is **runtime-configurable with compile-time defaults**: two IT-facing YAML blueprints provide seed values loaded once at first boot; all runtime configuration (branding, navigation, features) is stored in PostgreSQL and edited through the `/admin/*` pages. The Go backend serves config via `GET /api/v1/config` with a per-org in-memory cache (5-min TTL), embedded in the initial SSR HTML — zero client-side config round-trips.
+Aethel Workspace is a configuration-driven e-office platform. Its defining architectural trait is **runtime-configurable with compile-time defaults**: two IT-facing YAML blueprints provide seed values loaded once at first boot; all runtime configuration (branding, navigation, features) is stored in PostgreSQL and edited through the `/admin/*` pages. The Go backend serves config via `GET /api/v1/config` with a single in-memory config cache (5-min TTL), embedded in the initial SSR HTML — zero client-side config round-trips.
 
 The system is organized around three domain pillars:
 1. **DAK Diarization** — inbound correspondence intake and tracking
@@ -65,7 +65,7 @@ No lint script defined; ESLint via `eslint.config.mjs` (extends `.nuxt/eslint.co
 - **Mode**: Light only
 - **Icons**: Lucide via `i-lucide-*` Iconify notation (no emoji icons)
 - **Urgency colors**: IMMEDIATE → rose, PRIORITY → amber, ROUTINE → emerald
-- **Document status colors**: PENDING_ASSIGNMENT → neutral, UNDER_REVIEW → primary/indigo, IN_TRANSIT → sky, ATTEMPTED_DELIVERY → amber, DELIVERED → emerald, ESCALATED → rose, DISPATCHED → violet
+- **Document status colors**: PENDING_ASSIGNMENT → neutral, UNDER_REVIEW → primary/indigo, IN_TRANSIT → sky, ATTEMPTED_DELIVERY → amber, DELIVERED → emerald, ESCALATED → rose, DISPATCHED → violet, REJECTED → red
 
 ### Dynamic Theming
 
@@ -177,7 +177,7 @@ Only two files are IT-admin facing. All other configuration is managed via the `
 aethel-core/
 └── internal/
     ├── config/                   # (Sprint 2) in-memory config cache + API handlers
-    │   ├── cache.go              # ConfigCache: per-org map, 5-min TTL
+    │   ├── cache.go              # ConfigCache: single config struct, 5-min TTL
     │   ├── loader.go             # LoadOrgConfig: queries branding_configs + system_settings
     │   └── handler.go            # GET /api/v1/config, PATCH /api/v1/admin/config/*
     └── database/
@@ -229,11 +229,11 @@ ER diagram: `docs/db-design.mmd` — open with any Mermaid renderer.
 | 18 | `audit_ledger` (Pillar 3 — PARTITION BY RANGE monthly) |
 | 19 | Pre-provisioned audit_ledger monthly partitions (12 back, 3 ahead) |
 | 20 | `set_updated_at()` function + triggers on all `updated_at` tables |
-| 21 | ALTER `branding_configs`: ADD `neutral_palette`, `font_family`, `wordmark` (supports runtime branding editor) |
+| 21 | ALTER `branding_configs`: ADD `neutral_palette` varchar(20) default 'slate', `font_family` varchar(100) default 'Inter', `wordmark` varchar(200) default 'Aethel Workspace' (supports runtime branding editor) |
 
 ### Key schema decisions
 
-- **Multi-tenancy**: `organization_id uuid` on every table; RLS to be added in a future migration once the Go layer is ready.
+- **Single-tenant self-hosted**: Aethel is not a SaaS product. Each organization downloads, configures, and hosts their own instance. The `organizations` table holds exactly one row — the installation's own org profile. `organization_id` on other tables is a fixed boot-time constant (loaded from that one row at startup), not a per-request routing key. No TenantResolver middleware. No RLS. No multi-tenant query scoping.
 - **Audit ledger**: `bigserial` PK (not UUID) for partition performance; `organization_id` is a plain `uuid` (not FK) so records survive org deletion; `previous_checksum` chains rows for tamper detection.
 - **Green notes**: Immutable after insert — no `updated_at`. `cryptographic_hash = SHA-256(content || sequence || author)`, `previous_hash` links to prior note.
 - **Dispatch events**: Single `dispatch_events` table aggregates all timeline events (routing, handoff, escalation) — avoids multi-table UNIONs in the timeline view.

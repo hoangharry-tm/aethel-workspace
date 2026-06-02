@@ -6,7 +6,6 @@ sequenceDiagram
     participant RL as RateLimit MW
     participant CORS as CORS MW
     participant AUTH as Auth MW
-    participant TR as TenantResolver MW
     participant RBAC as RBAC MW
     participant H as Handler
     participant SVC as Service
@@ -22,18 +21,17 @@ sequenceDiagram
         CORS-->>C: 429 Too Many Requests
     end
     CORS->>AUTH: handle OPTIONS or append CORS headers
-    AUTH->>TR: parse + validate JWT
+    AUTH->>RBAC: parse + validate JWT; set userID + role on context
     alt invalid or missing JWT
-        TR-->>C: 401 Unauthorized
+        RBAC-->>C: 401 Unauthorized
     end
-    TR->>RBAC: set orgID on context
     RBAC->>H: check role vs required permission
     alt permission denied
         H-->>C: 403 Forbidden + audit event written
     end
     H->>SVC: call service function
     SVC->>QR: QueryRegistry.Get("group.name")
-    QR->>PG: execute prepared statement (org-scoped)
+    QR->>PG: execute prepared statement
     PG-->>QR: result rows
     QR-->>SVC: rows
     SVC-->>H: domain types

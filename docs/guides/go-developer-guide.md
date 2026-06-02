@@ -27,8 +27,8 @@ aethel-core/
 │   │   ├── loader.go          # load + validate YAML into typed structs
 │   │   └── database_config.go # DatabaseConfig struct (server-database.yaml)
 │   ├── config/
-│   │   ├── cache.go           # ConfigCache: per-org in-memory cache, 5-min TTL
-│   │   ├── loader.go          # LoadOrgConfig: queries branding_configs + system_settings
+│   │   ├── cache.go           # ConfigCache: single config struct, 5-min TTL
+│   │   ├── loader.go          # LoadConfig: queries branding_configs + system_settings
 │   │   └── handler.go         # HTTP handlers for GET /api/v1/config and PATCH endpoints
 │   ├── database/
 │   │   ├── connect.go         # open *sql.DB from DatabaseConfig

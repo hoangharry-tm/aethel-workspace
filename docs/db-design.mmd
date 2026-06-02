@@ -2,7 +2,10 @@
 erDiagram
 
   %% ═══════════════════════════════════════════════════════════════════════════
-  %% TENANCY & IDENTITY
+  %% INSTALLATION PROFILE & IDENTITY
+  %% Single-tenant self-hosted: organizations always has exactly one row.
+  %% organization_id on other tables is a fixed boot-time constant, not a
+  %% per-request routing key. No TenantResolver middleware. No RLS.
   %% ═══════════════════════════════════════════════════════════════════════════
 
   ORGANIZATIONS {
@@ -251,6 +254,9 @@ erDiagram
     text         logo_file_path        "nullable"
     varchar_50   logo_mime_type        "nullable — image/png|image/svg+xml"
     varchar_7    primary_brand_color   "nullable — hex e.g. #4f46e5"
+    varchar_20   neutral_palette       "default slate — migration 21"
+    varchar_100  font_family           "default Inter — migration 21"
+    varchar_200  wordmark              "default Aethel Workspace — migration 21"
     uuid         updated_by_user_id    FK "nullable"
     timestamptz  updated_at
   }

@@ -20,6 +20,8 @@
 CREATE TABLE {{ .Schema }}.{{ T "dispatch_events" }} (
     id                   uuid        NOT NULL DEFAULT gen_random_uuid(),
     dispatch_id          uuid        NOT NULL,
+    -- No FK on routing_rule_id: event history must survive rule deletion.
+    -- Matches the same intentional pattern as audit_ledger.organization_id.
     routing_rule_id      uuid,
     routing_stop_order   smallint,
     event_type           varchar(50) NOT NULL,

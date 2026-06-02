@@ -29,7 +29,7 @@ aethel-core/
 │   │   ├── loader.go            # load + validate YAML into typed structs
 │   │   └── database_config.go   # DatabaseConfig struct (server-database.yaml only)
 │   ├── config/
-│   │   ├── cache.go             # ConfigCache: per-org in-memory cache, 5-min TTL
+│   │   ├── cache.go             # ConfigCache: single config struct, 5-min TTL
 │   │   ├── loader.go            # LoadOrgConfig: queries branding_configs + system_settings
 │   │   └── handler.go           # GET /api/v1/config, PATCH /api/v1/admin/config/*
 │   ├── domain/

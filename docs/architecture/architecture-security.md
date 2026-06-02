@@ -90,13 +90,13 @@ The database connection uses `ssl_mode: verify-full` in production (see `server-
 
 ---
 
-## Multi-Tenancy Isolation
+## Deployment Model
 
-Every table in the database has an `organization_id uuid` column. The TenantResolver middleware sets the organization ID from the JWT claim on the request context. Every repository method that reads or writes data accepts the organization ID as a parameter and includes it in the SQL `WHERE` clause.
+Aethel is a **single-tenant self-hosted application**. Each organization downloads, configures, and hosts their own instance. There is no SaaS or managed hosting. One running instance serves exactly one organization.
 
-No query in the codebase omits the `organization_id` filter for multi-tenant tables. The code review checklist includes this item explicitly.
+The `organizations` table holds exactly one row — the installation's own org profile (name, contact, timezone, etc.). The `organization_id` column present on other tables is a fixed UUID constant loaded from that row once at startup; it is not a per-request routing key and there is no TenantResolver middleware. No Row-Level Security is needed because there is only one tenant and no cross-tenant data isolation problem to solve.
 
-Row-Level Security (RLS) is planned as a future PostgreSQL migration. When RLS is enabled, the database will enforce the isolation constraint at the PostgreSQL level, providing a second layer of defense against a programming error that omits the filter. RLS is not enabled in v1 because it requires the application to set the `app.current_org_id` session variable on each connection, which is incompatible with connection pooling without careful management.
+This simplifies the security model significantly: authentication is about identifying which *user* is acting, not which *organization* the request belongs to.
 
 ---
 

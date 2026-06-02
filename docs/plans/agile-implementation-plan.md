@@ -57,7 +57,7 @@ The **definition of done** for a sprint is: all listed deliverables are merged t
 - `internal/service/auth_service.go` — `Register`, `Login` (Argon2id hash verify), `IssueAccessToken` (JWT), `IssueRefreshToken` (opaque random, stored in `user_sessions`), `RefreshSession`, `RevokeSession`, `RequestPasswordReset`, `ConfirmPasswordReset`
 - `internal/rbac/middleware.go` — `Require(permission string)` middleware factory; reads role from context; checks against hardcoded role-permission table; writes `403` and logs `PERMISSION_DENIED` audit event on failure
 - Auth handler `internal/api/handlers/auth.go` — POST `/auth/login`, POST `/auth/refresh`, POST `/auth/logout`, POST `/auth/password-reset/request`, POST `/auth/password-reset/confirm`
-- Full middleware stack wired in `api/server.go`: Recovery → RequestID → StructuredLogger → RateLimiter → CORS → Auth → TenantResolver → RBAC → Handler
+- Full middleware stack wired in `api/server.go`: Recovery → RequestID → StructuredLogger → RateLimiter → CORS → Auth → RBAC → Handler
 - Health and readiness endpoints: `GET /healthz`, `GET /readyz`
 - Unit tests for `auth_service.go`: register/login happy path, wrong password, expired token, revoked session
 
@@ -81,7 +81,7 @@ The **definition of done** for a sprint is: all listed deliverables are merged t
 
 ### Deliverables
 
-- Config API endpoints: `GET /api/v1/config`, `GET /api/v1/config/branding`, `GET /api/v1/config/nav`, `GET /api/v1/config/features`; `PATCH /api/v1/admin/config/branding`, `PATCH /api/v1/admin/config/nav`, `PATCH /api/v1/admin/config/features`, `PATCH /api/v1/admin/config/org`; in-memory per-org `ConfigCache` (5-min TTL) in `internal/config/`; cache invalidation on admin PATCH.
+- Config API endpoints: `GET /api/v1/config`, `GET /api/v1/config/branding`, `GET /api/v1/config/nav`, `GET /api/v1/config/features`; `PATCH /api/v1/admin/config/branding`, `PATCH /api/v1/admin/config/nav`, `PATCH /api/v1/admin/config/features`, `PATCH /api/v1/admin/config/org`; single `ConfigCache` struct (5-min TTL) in `internal/config/`; cache invalidation on admin PATCH.
 - `internal/domain/` — `DispatchRepository`, `RoutingRuleRepository`, `DispatchEventRepository` interfaces; `RoutingRule`, `RoutingRuleCondition`, `RoutingRuleDestination`, `DispatchEvent` domain types
 - `internal/database/` — concrete implementations of `DispatchRepository`, `RoutingRuleRepository`, `DispatchEventRepository`; all queries scoped by `organization_id`
 - `internal/service/dispatch_service.go` — `CreateDispatch` (runs routing rule engine, appends `ROUTING_APPLIED` event), `GetDispatchByID`, `ListInbox` (calls named query from registry), `ListOutbound`, `AssignDispatch` (manual routing, appends `MANUALLY_ASSIGNED` event), `AcknowledgeDelivery`, `UpdateStatus`, `EvaluateRoutingRules` (priority-ordered rule matching: document_type + sender_org + urgency conditions)

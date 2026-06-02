@@ -47,7 +47,6 @@ The following middleware are applied in this exact order. Order is not negotiabl
 [RateLimiter]     → per-IP token bucket; rejects with 429 if exhausted
 [CORS]            → sets Access-Control-* headers; handles preflight OPTIONS
 [Auth]            → parses JWT from Authorization: Bearer; sets user on context
-[TenantResolver]  → resolves organization_id from authenticated user; sets on context
 [RBAC]            → checks user's role against route's required permission
 [Handler]         → application logic
 ```
@@ -60,9 +59,7 @@ The following middleware are applied in this exact order. Order is not negotiabl
 
 **RateLimiter** runs before Auth intentionally. Unauthenticated rate limiting prevents credential-stuffing attacks from consuming connection slots while JWT parsing occurs.
 
-**Auth** runs before TenantResolver because the tenant is derived from the JWT claims.
-
-**TenantResolver** runs before RBAC because permission checks need both the user's role and the organization context.
+**Auth** runs before RBAC because the role is read from the JWT claims.
 
 **RBAC** is the last middleware before the handler. If it passes, the request is authorized.
 
@@ -89,7 +86,7 @@ This separation means the access token path (every authenticated request) is dat
 
 Sessions are stored in the `user_sessions` table (see migration 04). There is no Redis dependency. This is a deliberate choice for small-to-medium deployments: a single PostgreSQL table is operationally simpler than a Redis cluster, survives process restarts, and is visible to audit queries.
 
-The `user_sessions` table stores: `id`, `user_id`, `organization_id`, `refresh_token_hash` (SHA-256 of the opaque token), `ip_address`, `user_agent`, `expires_at`, `created_at`, `last_used_at`, `revoked_at`.
+The `user_sessions` table stores: `id`, `user_id`, `session_token_hash` (SHA-256 of the opaque token), `client_ip_address`, `user_agent`, `expires_at`, `created_at`.
 
 If a refresh token is revoked (logout, admin action, detected anomaly), the session row is soft-deleted by setting `revoked_at`. The refresh endpoint checks this before issuing a new access token.
 
@@ -144,47 +141,41 @@ The following is a step-by-step narrative of what happens from the moment a TCP 
 4. The **StructuredLogger** middleware records the start time and stores a zerolog logger (with `request_id`, `method`, `path`, `remote_addr`) on the context. When the handler returns, it logs `status`, `latency`, and `bytes_written`.
 5. The **RateLimiter** middleware checks the per-IP bucket. If the bucket is empty, it writes `429 Too Many Requests` with a `Retry-After` header and stops processing. Otherwise it decrements the bucket and continues.
 6. The **CORS** middleware handles `OPTIONS` preflight requests immediately, returning the configured `Access-Control-*` headers. For non-OPTIONS requests, it appends the headers and continues.
-7. The **Auth** middleware reads the `Authorization: Bearer <token>` header. It parses and validates the JWT signature and expiry. On failure, it writes `401 Unauthorized`. On success, it stores the `userID`, `role`, and `orgID` claims on the request context.
-8. The **TenantResolver** middleware reads `orgID` from the context set in step 7 and verifies the organization exists (this check can be skipped if the JWT is trusted). It sets a typed `OrganizationID` value on the context for downstream use.
-9. The **RBAC** middleware reads the route's required permission (registered at startup) and the user's role from context. It consults the permission table in `internal/rbac/`. On failure, it writes `403 Forbidden` and logs an `RBAC_DENIED` audit event. On success, it continues.
-10. The **Handler** function runs. It reads typed values from the request context (user ID, org ID), calls the appropriate service function, and encodes the result as JSON with the correct status code.
-11. The service function calls repository methods (via the domain interface). The repository uses the query registry to execute prepared SQL statements against PostgreSQL, scoped by `organization_id`.
+7. The **Auth** middleware reads the `Authorization: Bearer <token>` header. It parses and validates the JWT signature and expiry. On failure, it writes `401 Unauthorized`. On success, it stores the `userID` and `role` claims on the request context.
+8. The **RBAC** middleware reads the route's required permission (registered at startup) and the user's role from context. It consults the permission table in `internal/rbac/`. On failure, it writes `403 Forbidden` and logs an `RBAC_DENIED` audit event. On success, it continues.
+9. The **Handler** function runs. It reads typed values from the request context (user ID), calls the appropriate service function, and encodes the result as JSON with the correct status code.
+10. The service function calls repository methods (via the domain interface). The repository uses the query registry to execute prepared SQL statements against PostgreSQL.
 12. The response is written. The logger middleware (deferred from step 4) fires and records the outcome.
 
 ---
 
 ## Runtime Configuration Fetch Flow
 
-The Go backend maintains a per-org in-memory config cache to serve branding, navigation, and feature flags to the Nuxt SSR frontend with minimal database load.
+The Go backend maintains a single in-memory config cache to serve branding, navigation, and feature flags to the Nuxt SSR frontend with minimal database load. Because Aethel is a single-tenant self-hosted application, there is always exactly one config to cache.
 
 ### Cache structure
 
 ```go
 // internal/config/cache.go
 type ConfigCache struct {
-    mu      sync.RWMutex
-    entries map[uuid.UUID]*CachedConfig
-}
-
-type CachedConfig struct {
-    Config    OrgConfig
-    ExpiresAt time.Time
+    mu        sync.RWMutex
+    config    *AppConfig
+    expiresAt time.Time
 }
 ```
 
-- Keyed by `organization_id` (UUID).
-- TTL is 5 minutes per entry.
-- `Invalidate(orgID)` deletes the entry; the next request re-fetches from DB.
+- Single struct — no map, no org key.
+- TTL is 5 minutes.
+- `Invalidate()` clears the cached value; the next request re-fetches from DB.
 
 ### Request flow
 
 `GET /api/v1/config` handler:
 
-1. Read `orgID` from the request context (set by TenantResolver middleware).
-2. `cache.Get(orgID)` — cache hit returns immediately without a DB query.
-3. On cache miss: call `loader.LoadOrgConfig(ctx, db, orgID)`, which queries `branding_configs` + `system_settings WHERE key = 'nav_config'` and constructs the response struct.
-4. Store result in cache with `ExpiresAt = now + 5m`.
-5. Return the `OrgConfig` as JSON.
+1. `cache.Get()` — cache hit returns immediately without a DB query.
+2. On cache miss: call `loader.LoadConfig(ctx, db)`, which queries `branding_configs` + `system_settings WHERE key = 'nav_config'` and constructs the response struct.
+3. Store result in cache with `ExpiresAt = now + 5m`.
+4. Return the `AppConfig` as JSON.
 
 ### Nuxt SSR integration
 
