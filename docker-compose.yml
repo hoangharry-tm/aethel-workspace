@@ -18,7 +18,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-aethel}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       # Reference only — NOT for production use.

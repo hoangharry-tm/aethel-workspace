@@ -5,12 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"time"
-
-	"github.com/google/uuid"
 )
-
-const cacheTTL = 5 * time.Minute
 
 // OrgConfig mirrors the AppRuntimeConfig shape expected by the Nuxt frontend.
 type OrgConfig struct {
@@ -35,10 +30,10 @@ type NavGroup struct {
 }
 
 type NavItem struct {
-	Label string  `json:"label"`
-	Icon  string  `json:"icon"`
-	To    string  `json:"to"`
-	Badge *int    `json:"badge"`
+	Label string `json:"label"`
+	Icon  string `json:"icon"`
+	To    string `json:"to"`
+	Badge *int   `json:"badge"`
 }
 
 type FeatureFlags struct {
@@ -54,8 +49,10 @@ type OrgProfile struct {
 	ContactEmail string `json:"contactEmail"`
 }
 
-// LoadOrgConfig queries branding_configs and system_settings to build an OrgConfig.
-func LoadOrgConfig(ctx context.Context, db *sql.DB, orgID uuid.UUID) (*OrgConfig, error) {
+// LoadOrgConfig reads the current installation config from the database.
+// Single-tenant: no org filter — there is exactly one org per installation.
+// Returns safe defaults for any missing rows.
+func LoadOrgConfig(ctx context.Context, db *sql.DB) (*OrgConfig, error) {
 	cfg := &OrgConfig{
 		Branding: BrandingConfig{
 			PrimaryColor:   "#4f46e5",
@@ -70,44 +67,38 @@ func LoadOrgConfig(ctx context.Context, db *sql.DB, orgID uuid.UUID) (*OrgConfig
 		},
 	}
 
+	// Load branding — branding_configs has one row per installation.
 	row := db.QueryRowContext(ctx, `
 		SELECT
-			COALESCE(primary_color, '#4f46e5'),
+			COALESCE(primary_brand_color, '#4f46e5'),
 			COALESCE(neutral_palette, 'slate'),
 			COALESCE(font_family, 'Inter'),
 			COALESCE(wordmark, 'Aethel Workspace'),
-			COALESCE(logo_path, ''),
-			COALESCE(feature_flags::text, '{}')
+			COALESCE(logo_file_path, '')
 		FROM branding_configs
-		WHERE organization_id = $1
 		LIMIT 1
-	`, orgID)
-
-	var featureFlagsJSON string
+	`)
+	var logoPath string
 	err := row.Scan(
 		&cfg.Branding.PrimaryColor,
 		&cfg.Branding.NeutralPalette,
 		&cfg.Branding.FontFamily,
 		&cfg.Branding.Wordmark,
-		&cfg.Branding.LogoPath,
-		&featureFlagsJSON,
+		&logoPath,
 	)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("load branding config: %w", err)
 	}
-	if featureFlagsJSON != "" && featureFlagsJSON != "{}" {
-		_ = json.Unmarshal([]byte(featureFlagsJSON), &cfg.Features)
-	}
+	cfg.Branding.LogoPath = logoPath
 
-	// Load nav config from system_settings.
+	// Load nav config from system_settings (key/value store).
 	var navJSON sql.NullString
 	err = db.QueryRowContext(ctx, `
-		SELECT setting_value
+		SELECT value
 		FROM system_settings
-		WHERE organization_id = $1
-		  AND setting_key = 'nav_config'
+		WHERE key = 'nav_config'
 		LIMIT 1
-	`, orgID).Scan(&navJSON)
+	`).Scan(&navJSON)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("load nav config: %w", err)
 	}
@@ -115,22 +106,35 @@ func LoadOrgConfig(ctx context.Context, db *sql.DB, orgID uuid.UUID) (*OrgConfig
 		_ = json.Unmarshal([]byte(navJSON.String), &cfg.Nav)
 	}
 
-	// Load org profile from organizations table.
+	// Load feature flags from system_settings.
+	featureRows, err := db.QueryContext(ctx, `
+		SELECT key, value
+		FROM system_settings
+		WHERE key IN ('feat_green_noting', 'feat_smtp', 'feat_2fa_admin')
+	`)
+	if err == nil {
+		defer featureRows.Close()
+		for featureRows.Next() {
+			var k, v string
+			if scanErr := featureRows.Scan(&k, &v); scanErr == nil {
+				switch k {
+				case "feat_green_noting":
+					cfg.Features.GreenNotingEnabled = v == "true"
+				case "feat_smtp":
+					cfg.Features.ExternalSmtpEnabled = v == "true"
+				case "feat_2fa_admin":
+					cfg.Features.Require2faForAdmin = v == "true"
+				}
+			}
+		}
+	}
+
+	// Load org name from organizations (single row per installation).
 	err = db.QueryRowContext(ctx, `
-		SELECT
-			COALESCE(name, ''),
-			COALESCE(timezone, 'UTC'),
-			COALESCE(locale, 'en-US'),
-			COALESCE(contact_email, '')
+		SELECT COALESCE(name, '')
 		FROM organizations
-		WHERE id = $1
 		LIMIT 1
-	`, orgID).Scan(
-		&cfg.Org.Name,
-		&cfg.Org.Timezone,
-		&cfg.Org.Locale,
-		&cfg.Org.ContactEmail,
-	)
+	`).Scan(&cfg.Org.Name)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("load org profile: %w", err)
 	}

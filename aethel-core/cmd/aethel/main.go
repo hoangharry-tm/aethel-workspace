@@ -9,17 +9,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/spf13/cobra"
 	"github.com/joho/godotenv"
+	"github.com/spf13/cobra"
 
 	"aethel-core/internal/api"
 	"aethel-core/internal/api/handlers"
+	"aethel-core/internal/app"
 	"aethel-core/internal/blueprint"
 	"aethel-core/internal/config"
 	"aethel-core/internal/database"
+	"aethel-core/internal/database/repos"
 	"aethel-core/internal/domain"
 	"aethel-core/internal/service"
-	
 )
 
 var rootCmd = &cobra.Command{
@@ -105,37 +106,51 @@ func runServe(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// 4. Build query registry.
+	// 4. Load the single org ID (single-tenant: exactly one row in organizations).
+	if err := app.LoadOrgID(ctx, db); err != nil {
+		slog.Warn("could not load org ID — proceeding without it", "err", err)
+	}
+
+	// 5. Build query registry.
 	queries, err := database.BuildQueryRegistry(ctx, db, queriesCfg)
 	if err != nil {
 		return fmt.Errorf("build query registry: %w", err)
 	}
 	slog.Info("query registry built")
 
-	// 5. Initialize config cache.
+	// 6. Initialize single-tenant config cache.
 	configCache := config.NewConfigCache()
 
-	// 6. Build stub repositories (replaced by real DB impls in Sprint 2–4).
+	// 7. Build repositories.
+	// Sprint 2 — Dispatch pillar: real DB implementations.
 	var (
-		userRepo     domain.UserRepository           = &noopUserRepo{}
-		sessionRepo  domain.SessionRepository        = &noopSessionRepo{}
-		pwResetRepo  domain.PasswordResetRepository  = &noopPWResetRepo{}
-		auditRepo    domain.AuditRepository          = &noopAuditRepo{}
-		dispatchRepo domain.DispatchRepository       = &noopDispatchRepo{}
-		eventRepo    domain.DispatchEventRepository  = &noopEventRepo{}
-		routingRepo  domain.RoutingRuleRepository    = &noopRoutingRepo{}
-		msRepo       domain.MinuteSheetRepository    = &noopMSRepo{}
-		gnRepo       domain.GreenNoteRepository      = &noopGNRepo{}
-		docTypeRepo  domain.DocumentTypeRepository   = &noopDocTypeRepo{}
-		escRepo      domain.EscalationRuleRepository = &noopEscRepo{}
+		dispatchRepo domain.DispatchRepository      = repos.NewDispatchRepo(db, queries)
+		eventRepo    domain.DispatchEventRepository = repos.NewDispatchEventRepo(db, queries)
+		routingRepo  domain.RoutingRuleRepository   = repos.NewRoutingRuleRepo(db, queries)
 	)
 
-	// 7. Wire services.
+	// Auth pillar — implemented in Sprint 1 (noops kept until Sprint 1 repos land).
+	var (
+		userRepo    domain.UserRepository          = &noopUserRepo{}
+		sessionRepo domain.SessionRepository       = &noopSessionRepo{}
+		pwResetRepo domain.PasswordResetRepository = &noopPWResetRepo{}
+		auditRepo   domain.AuditRepository         = &noopAuditRepo{}
+	)
+
+	// Sprint 3–4 placeholders.
+	var (
+		msRepo      domain.MinuteSheetRepository    = &noopMSRepo{}
+		gnRepo      domain.GreenNoteRepository      = &noopGNRepo{}
+		docTypeRepo domain.DocumentTypeRepository   = &noopDocTypeRepo{}
+		escRepo     domain.EscalationRuleRepository = &noopEscRepo{}
+	)
+
+	// 8. Wire services.
 	authSvc := service.NewAuthService(userRepo, sessionRepo, pwResetRepo, auditRepo)
 	dispatchSvc := service.NewDispatchService(dispatchRepo, eventRepo, routingRepo, msRepo, auditRepo)
 	workflowSvc := service.NewWorkflowService(msRepo, gnRepo, auditRepo)
 
-	// 8. Wire handlers.
+	// 9. Wire handlers.
 	authHandler := handlers.NewAuthHandler(authSvc)
 	dispatchHandler := handlers.NewDispatchHandler(dispatchSvc)
 	workflowHandler := handlers.NewWorkflowHandler(workflowSvc)
@@ -147,7 +162,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 		EscRules:     escRepo,
 	}
 
-	// 9. Start HTTP server.
+	// 10. Start HTTP server.
 	addr := envAddr()
 	srv := api.NewServer(db, queries, configCache, authHandler, dispatchHandler, workflowHandler, auditRepo, adminDeps)
 	slog.Info("starting server", "addr", addr)
@@ -157,7 +172,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 // ── migrate commands ──────────────────────────────────────────────────────────
 
 func runMigrateUp(_ *cobra.Command, _ []string) error {
-	dbCfg, _, envCfg, err := loadBlueprints()
+	dbCfg, envCfg, err := loadDatabaseBlueprint()
 	if err != nil {
 		return err
 	}
@@ -170,7 +185,7 @@ func runMigrateUp(_ *cobra.Command, _ []string) error {
 }
 
 func runMigrateDown(_ *cobra.Command, _ []string) error {
-	dbCfg, _, envCfg, err := loadBlueprints()
+	dbCfg, envCfg, err := loadDatabaseBlueprint()
 	if err != nil {
 		return err
 	}
@@ -183,7 +198,7 @@ func runMigrateDown(_ *cobra.Command, _ []string) error {
 }
 
 func runMigrateStatus(_ *cobra.Command, _ []string) error {
-	dbCfg, _, envCfg, err := loadBlueprints()
+	dbCfg, envCfg, err := loadDatabaseBlueprint()
 	if err != nil {
 		return err
 	}
@@ -196,7 +211,7 @@ func runMigrateStatus(_ *cobra.Command, _ []string) error {
 }
 
 func runMigrateValidate(_ *cobra.Command, _ []string) error {
-	dbCfg, _, envCfg, err := loadBlueprints()
+	dbCfg, envCfg, err := loadDatabaseBlueprint()
 	if err != nil {
 		return err
 	}
@@ -213,14 +228,25 @@ func runMigrateValidate(_ *cobra.Command, _ []string) error {
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func loadBlueprints() (*blueprint.DatabaseConfig, *blueprint.QueriesConfig, blueprint.EnvironmentConfig, error) {
-	dbCfg, err := blueprint.LoadDatabaseConfig("blueprints/server-database.yaml")
+	dbCfg, envCfg, err := loadDatabaseBlueprint()
 	if err != nil {
-		return nil, nil, blueprint.EnvironmentConfig{}, fmt.Errorf("load database blueprint: %w", err)
+		return nil, nil, blueprint.EnvironmentConfig{}, err
 	}
 
-	queriesCfg, err := blueprint.LoadQueriesConfig("internal/database/queries/queries.yaml")
+	queriesCfg, err := blueprint.LoadQueriesConfig("aethel-core/internal/database/queries/queries.yaml")
 	if err != nil {
 		return nil, nil, blueprint.EnvironmentConfig{}, fmt.Errorf("load queries blueprint: %w", err)
+	}
+
+	return dbCfg, queriesCfg, envCfg, nil
+}
+
+// loadDatabaseBlueprint loads only the database config — used by migrate commands
+// which don't need the queries blueprint.
+func loadDatabaseBlueprint() (*blueprint.DatabaseConfig, blueprint.EnvironmentConfig, error) {
+	dbCfg, err := blueprint.LoadDatabaseConfig("blueprints/server-database.yaml")
+	if err != nil {
+		return nil, blueprint.EnvironmentConfig{}, fmt.Errorf("load database blueprint: %w", err)
 	}
 
 	env := os.Getenv("AETHEL_ENV")
@@ -230,11 +256,11 @@ func loadBlueprints() (*blueprint.DatabaseConfig, *blueprint.QueriesConfig, blue
 
 	envCfg, ok := dbCfg.Environments[env]
 	if !ok {
-		return nil, nil, blueprint.EnvironmentConfig{},
+		return nil, blueprint.EnvironmentConfig{},
 			fmt.Errorf("blueprint: environment %q not defined in server-database.yaml", env)
 	}
 
-	return dbCfg, queriesCfg, envCfg, nil
+	return dbCfg, envCfg, nil
 }
 
 func envAddr() string {
@@ -249,7 +275,7 @@ func envAddr() string {
 	return ":" + port
 }
 
-// ── stub repositories (replaced in Sprint 2–4) ───────────────────────────────
+// ── stub repositories (replaced in Sprint 1 / Sprint 3–4) ────────────────────
 
 type noopUserRepo struct{}
 
@@ -297,53 +323,7 @@ func (r *noopAuditRepo) VerifyChain(_ context.Context, _ uuid.UUID, _, _ time.Ti
 	return &domain.ChainVerificationResult{Valid: true}, nil
 }
 
-type noopDispatchRepo struct{}
-
-func (r *noopDispatchRepo) GetByID(_ context.Context, _, _ uuid.UUID) (*domain.Dispatch, error) {
-	return nil, domain.ErrNotFound
-}
-func (r *noopDispatchRepo) GetByTrackingNumber(_ context.Context, _ uuid.UUID, _ string) (*domain.Dispatch, error) {
-	return nil, domain.ErrNotFound
-}
-func (r *noopDispatchRepo) ListInbox(_ context.Context, _, _ uuid.UUID, _ domain.Page) ([]domain.Dispatch, error) {
-	return nil, nil
-}
-func (r *noopDispatchRepo) ListOutbound(_ context.Context, _ uuid.UUID, _ domain.Page) ([]domain.Dispatch, error) {
-	return nil, nil
-}
-func (r *noopDispatchRepo) ListByUser(_ context.Context, _, _ uuid.UUID, _ domain.Page) ([]domain.Dispatch, error) {
-	return nil, nil
-}
-func (r *noopDispatchRepo) Create(_ context.Context, _ *domain.Dispatch) error { return nil }
-func (r *noopDispatchRepo) UpdateStatus(_ context.Context, _, _ uuid.UUID, _ domain.DispatchStatus) error {
-	return nil
-}
-func (r *noopDispatchRepo) Assign(_ context.Context, _, _ uuid.UUID, _, _ *uuid.UUID) error {
-	return nil
-}
-func (r *noopDispatchRepo) Acknowledge(_ context.Context, _, _ uuid.UUID, _ uuid.UUID) error {
-	return nil
-}
-func (r *noopDispatchRepo) Escalate(_ context.Context, _, _ uuid.UUID) error { return nil }
-
-type noopEventRepo struct{}
-
-func (r *noopEventRepo) Create(_ context.Context, _ *domain.DispatchEvent) error { return nil }
-func (r *noopEventRepo) ListByDispatch(_ context.Context, _, _ uuid.UUID) ([]domain.DispatchEvent, error) {
-	return nil, nil
-}
-
-type noopRoutingRepo struct{}
-
-func (r *noopRoutingRepo) List(_ context.Context, _ uuid.UUID) ([]domain.RoutingRule, error) {
-	return nil, nil
-}
-func (r *noopRoutingRepo) GetByID(_ context.Context, _, _ uuid.UUID) (*domain.RoutingRule, error) {
-	return nil, domain.ErrNotFound
-}
-func (r *noopRoutingRepo) Create(_ context.Context, _ *domain.RoutingRule) error { return nil }
-func (r *noopRoutingRepo) Update(_ context.Context, _ *domain.RoutingRule) error { return nil }
-func (r *noopRoutingRepo) Delete(_ context.Context, _, _ uuid.UUID) error        { return nil }
+// Sprint 3–4 stubs — implemented when Green Noting & Escalation sprints land.
 
 type noopMSRepo struct{}
 

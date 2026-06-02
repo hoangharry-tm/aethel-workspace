@@ -7,6 +7,8 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+
+	"aethel-core/internal/app"
 )
 
 // Handler exposes GET /api/v1/config and PATCH /api/v1/admin/config/* endpoints.
@@ -21,26 +23,14 @@ func NewHandler(db *sql.DB, cache *ConfigCache) *Handler {
 
 type ctxKey string
 
-// OrgIDContextKey is exported so api/server.go can inject the org UUID.
+// OrgIDContextKey is kept exported so the tenant middleware in api/server.go can compile.
+// The config handlers do not read from this key — they use app.OrgID directly.
 const OrgIDContextKey ctxKey = "orgID"
 
-func orgIDFromCtx(r *http.Request) (uuid.UUID, bool) {
-	v := r.Context().Value(OrgIDContextKey)
-	if v == nil {
-		return uuid.UUID{}, false
-	}
-	id, ok := v.(uuid.UUID)
-	return id, ok
-}
+// ── GET endpoints (cache-first) ───────────────────────────────────────────────
 
 func (h *Handler) GetConfig(w http.ResponseWriter, r *http.Request) {
-	orgID, ok := orgIDFromCtx(r)
-	if !ok {
-		http.Error(w, "missing org context", http.StatusInternalServerError)
-		return
-	}
-
-	cfg, err := h.loadCached(r.Context(), orgID)
+	cfg, err := h.loadCached(r.Context())
 	if err != nil {
 		http.Error(w, "failed to load config", http.StatusInternalServerError)
 		return
@@ -49,12 +39,7 @@ func (h *Handler) GetConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetBranding(w http.ResponseWriter, r *http.Request) {
-	orgID, ok := orgIDFromCtx(r)
-	if !ok {
-		http.Error(w, "missing org context", http.StatusInternalServerError)
-		return
-	}
-	cfg, err := h.loadCached(r.Context(), orgID)
+	cfg, err := h.loadCached(r.Context())
 	if err != nil {
 		http.Error(w, "failed to load config", http.StatusInternalServerError)
 		return
@@ -63,12 +48,7 @@ func (h *Handler) GetBranding(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetNav(w http.ResponseWriter, r *http.Request) {
-	orgID, ok := orgIDFromCtx(r)
-	if !ok {
-		http.Error(w, "missing org context", http.StatusInternalServerError)
-		return
-	}
-	cfg, err := h.loadCached(r.Context(), orgID)
+	cfg, err := h.loadCached(r.Context())
 	if err != nil {
 		http.Error(w, "failed to load config", http.StatusInternalServerError)
 		return
@@ -77,12 +57,7 @@ func (h *Handler) GetNav(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetFeatures(w http.ResponseWriter, r *http.Request) {
-	orgID, ok := orgIDFromCtx(r)
-	if !ok {
-		http.Error(w, "missing org context", http.StatusInternalServerError)
-		return
-	}
-	cfg, err := h.loadCached(r.Context(), orgID)
+	cfg, err := h.loadCached(r.Context())
 	if err != nil {
 		http.Error(w, "failed to load config", http.StatusInternalServerError)
 		return
@@ -90,175 +65,187 @@ func (h *Handler) GetFeatures(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, cfg.Features)
 }
 
-func (h *Handler) PatchBranding(w http.ResponseWriter, r *http.Request) {
-	orgID, ok := orgIDFromCtx(r)
-	if !ok {
-		http.Error(w, "missing org context", http.StatusInternalServerError)
-		return
-	}
+// ── PATCH endpoints (write to DB, invalidate cache) ──────────────────────────
 
+func (h *Handler) PatchBranding(w http.ResponseWriter, r *http.Request) {
 	var input BrandingConfig
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSONErr(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
+	orgID := app.OrgID
 	_, err := h.db.ExecContext(r.Context(), `
-		UPDATE branding_configs SET
-			primary_color   = COALESCE(NULLIF($2, ''), primary_color),
-			neutral_palette = COALESCE(NULLIF($3, ''), neutral_palette),
-			font_family     = COALESCE(NULLIF($4, ''), font_family),
-			wordmark        = COALESCE(NULLIF($5, ''), wordmark),
-			logo_path       = COALESCE(NULLIF($6, ''), logo_path),
-			updated_at      = now()
-		WHERE organization_id = $1
+		INSERT INTO branding_configs (id, organization_id, primary_brand_color, neutral_palette, font_family, wordmark, logo_file_path, updated_at)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, now())
+		ON CONFLICT (organization_id) DO UPDATE SET
+			primary_brand_color = COALESCE(NULLIF(EXCLUDED.primary_brand_color, ''), branding_configs.primary_brand_color),
+			neutral_palette     = COALESCE(NULLIF(EXCLUDED.neutral_palette, ''),     branding_configs.neutral_palette),
+			font_family         = COALESCE(NULLIF(EXCLUDED.font_family, ''),         branding_configs.font_family),
+			wordmark            = COALESCE(NULLIF(EXCLUDED.wordmark, ''),             branding_configs.wordmark),
+			logo_file_path      = COALESCE(NULLIF(EXCLUDED.logo_file_path, ''),      branding_configs.logo_file_path),
+			updated_at          = now()
 	`, orgID,
-		input.PrimaryColor, input.NeutralPalette, input.FontFamily,
-		input.Wordmark, input.LogoPath,
+		nullIfEmpty(input.PrimaryColor),
+		nullIfEmpty(input.NeutralPalette),
+		nullIfEmpty(input.FontFamily),
+		nullIfEmpty(input.Wordmark),
+		nullIfEmpty(input.LogoPath),
 	)
 	if err != nil {
-		http.Error(w, "failed to update branding", http.StatusInternalServerError)
+		writeJSONErr(w, "failed to update branding", http.StatusInternalServerError)
 		return
 	}
 
-	h.cache.Invalidate(orgID)
-
-	cfg, err := h.loadCached(r.Context(), orgID)
+	h.cache.Invalidate()
+	cfg, err := h.loadCached(r.Context())
 	if err != nil {
-		http.Error(w, "failed to reload config", http.StatusInternalServerError)
+		writeJSONErr(w, "failed to reload config", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, cfg)
+	writeJSON(w, cfg.Branding)
 }
 
 func (h *Handler) PatchNav(w http.ResponseWriter, r *http.Request) {
-	orgID, ok := orgIDFromCtx(r)
-	if !ok {
-		http.Error(w, "missing org context", http.StatusInternalServerError)
-		return
-	}
-
 	var nav []NavGroup
 	if err := json.NewDecoder(r.Body).Decode(&nav); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSONErr(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if len(nav) == 0 {
+		writeJSONErr(w, "nav must be a non-empty array", http.StatusBadRequest)
 		return
 	}
 
 	navJSON, err := json.Marshal(nav)
 	if err != nil {
-		http.Error(w, "failed to encode nav", http.StatusInternalServerError)
+		writeJSONErr(w, "failed to encode nav", http.StatusInternalServerError)
 		return
 	}
 
+	orgID := app.OrgID
 	_, err = h.db.ExecContext(r.Context(), `
-		INSERT INTO system_settings (organization_id, setting_key, setting_value, updated_at)
-		VALUES ($1, 'nav_config', $2, now())
-		ON CONFLICT (organization_id, setting_key)
-		DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = now()
+		INSERT INTO system_settings (id, organization_id, key, value, value_type, updated_at)
+		VALUES (gen_random_uuid(), $1, 'nav_config', $2, 'JSON', now())
+		ON CONFLICT (organization_id, key) DO UPDATE
+		SET value = EXCLUDED.value, updated_at = now()
 	`, orgID, string(navJSON))
 	if err != nil {
-		http.Error(w, "failed to update nav", http.StatusInternalServerError)
+		writeJSONErr(w, "failed to update nav", http.StatusInternalServerError)
 		return
 	}
 
-	h.cache.Invalidate(orgID)
-
-	cfg, err := h.loadCached(r.Context(), orgID)
+	h.cache.Invalidate()
+	cfg, err := h.loadCached(r.Context())
 	if err != nil {
-		http.Error(w, "failed to reload config", http.StatusInternalServerError)
+		writeJSONErr(w, "failed to reload config", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, cfg)
+	writeJSON(w, cfg.Nav)
 }
 
 func (h *Handler) PatchFeatures(w http.ResponseWriter, r *http.Request) {
-	orgID, ok := orgIDFromCtx(r)
-	if !ok {
-		http.Error(w, "missing org context", http.StatusInternalServerError)
-		return
-	}
-
 	var features FeatureFlags
 	if err := json.NewDecoder(r.Body).Decode(&features); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSONErr(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	featuresJSON, err := json.Marshal(features)
+	orgID := app.OrgID
+	flagMap := map[string]bool{
+		"feat_green_noting": features.GreenNotingEnabled,
+		"feat_smtp":         features.ExternalSmtpEnabled,
+		"feat_2fa_admin":    features.Require2faForAdmin,
+	}
+	for k, v := range flagMap {
+		val := "false"
+		if v {
+			val = "true"
+		}
+		_, err := h.db.ExecContext(r.Context(), `
+			INSERT INTO system_settings (id, organization_id, key, value, value_type, updated_at)
+			VALUES (gen_random_uuid(), $1, $2, $3, 'BOOLEAN', now())
+			ON CONFLICT (organization_id, key) DO UPDATE
+			SET value = EXCLUDED.value, updated_at = now()
+		`, orgID, k, val)
+		if err != nil {
+			writeJSONErr(w, "failed to update features", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	h.cache.Invalidate()
+	cfg, err := h.loadCached(r.Context())
 	if err != nil {
-		http.Error(w, "failed to encode features", http.StatusInternalServerError)
+		writeJSONErr(w, "failed to reload config", http.StatusInternalServerError)
 		return
 	}
-
-	_, err = h.db.ExecContext(r.Context(), `
-		UPDATE branding_configs SET feature_flags = $2, updated_at = now()
-		WHERE organization_id = $1
-	`, orgID, string(featuresJSON))
-	if err != nil {
-		http.Error(w, "failed to update features", http.StatusInternalServerError)
-		return
-	}
-
-	h.cache.Invalidate(orgID)
-
-	cfg, err := h.loadCached(r.Context(), orgID)
-	if err != nil {
-		http.Error(w, "failed to reload config", http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, cfg)
+	writeJSON(w, cfg.Features)
 }
 
 func (h *Handler) PatchOrg(w http.ResponseWriter, r *http.Request) {
-	orgID, ok := orgIDFromCtx(r)
-	if !ok {
-		http.Error(w, "missing org context", http.StatusInternalServerError)
-		return
-	}
-
 	var input OrgProfile
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeJSONErr(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
+	// organizations table only has name (see migration 02 — no timezone/locale/contact_email columns).
 	_, err := h.db.ExecContext(r.Context(), `
 		UPDATE organizations SET
-			name          = COALESCE(NULLIF($2, ''), name),
-			timezone      = COALESCE(NULLIF($3, ''), timezone),
-			locale        = COALESCE(NULLIF($4, ''), locale),
-			contact_email = COALESCE(NULLIF($5, ''), contact_email),
-			updated_at    = now()
-		WHERE id = $1
-	`, orgID, input.Name, input.Timezone, input.Locale, input.ContactEmail)
+			name       = COALESCE(NULLIF($1, ''), name),
+			updated_at = now()
+	`, input.Name)
 	if err != nil {
-		http.Error(w, "failed to update org", http.StatusInternalServerError)
+		writeJSONErr(w, "failed to update org", http.StatusInternalServerError)
 		return
 	}
 
-	h.cache.Invalidate(orgID)
-
-	cfg, err := h.loadCached(r.Context(), orgID)
+	h.cache.Invalidate()
+	cfg, err := h.loadCached(r.Context())
 	if err != nil {
-		http.Error(w, "failed to reload config", http.StatusInternalServerError)
+		writeJSONErr(w, "failed to reload config", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, cfg)
+	writeJSON(w, cfg.Org)
 }
 
-func (h *Handler) loadCached(ctx context.Context, orgID uuid.UUID) (*OrgConfig, error) {
-	if cfg, ok := h.cache.Get(orgID); ok {
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+func (h *Handler) loadCached(ctx context.Context) (*OrgConfig, error) {
+	if cfg, ok := h.cache.Get(); ok {
 		return cfg, nil
 	}
-	cfg, err := LoadOrgConfig(ctx, h.db, orgID)
+	cfg, err := LoadOrgConfig(ctx, h.db)
 	if err != nil {
 		return nil, err
 	}
-	h.cache.Set(orgID, cfg, cacheTTL)
+	h.cache.Set(cfg)
 	return cfg, nil
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func writeJSONErr(w http.ResponseWriter, msg string, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+// nullIfEmpty returns the string or empty string (used for COALESCE/NULLIF patterns).
+func nullIfEmpty(s string) string {
+	return s
+}
+
+// orgIDFromCtx is kept for compatibility with any future callers; unused by this handler.
+func orgIDFromCtx(r *http.Request) (uuid.UUID, bool) {
+	v := r.Context().Value(OrgIDContextKey)
+	if v == nil {
+		return uuid.UUID{}, false
+	}
+	id, ok := v.(uuid.UUID)
+	return id, ok
 }

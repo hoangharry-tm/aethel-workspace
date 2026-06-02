@@ -45,17 +45,17 @@ environments:
       port: 5432
       database: "aethel_dev"
       user: "aethel"
-      # Password: set AETHEL_DB_PASSWORD=<your_local_password>
+      # Password: set AETHEL_DB_DSN or AETHEL_DB_PASSWORD in .env
       ssl_mode: "disable"
-      # Set to env var name (e.g. "AETHEL_DB_DSN") to use a full DSN.
-      connection_string_env: ""
+      # Reads full DSN from this env var — overrides host/port/user/password above.
+      connection_string_env: "AETHEL_DB_DSN"
     pooling:
       max_open_connections: 25
       max_idle_connections: 5
       connection_max_lifetime_minutes: 15
       connection_max_idle_time_minutes: 5
     migrations:
-      directory: "./internal/database/migrations"
+      directory: "./aethel-core/internal/database/migrations"
       auto_run_on_startup: true
       table_name: "schema_migrations_history"
       lock_timeout_seconds: 60

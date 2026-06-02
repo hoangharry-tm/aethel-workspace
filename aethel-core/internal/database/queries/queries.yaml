@@ -26,35 +26,260 @@ global_query_defaults:
 queries:
   # ══════════════════════════════════════════════════════════════════════════
   # PILLAR 1 — DISPATCH MANAGEMENT (Inbound & Outbound Tracking)
-  # TODO: Add production queries when Phase 2 (aethel-core) begins.
   # ══════════════════════════════════════════════════════════════════════════
   dispatch:
-    # TODO: Replace placeholder with real implementation in Phase 2.
+    create:
+      statement: |
+        INSERT INTO dispatches (
+          id, organization_id, tracking_number, direction, document_type_id,
+          sender_name, sender_organization,
+          recipient_name, recipient_organization, recipient_address,
+          submitted_by_user_id, priority_level, status_state,
+          subject_line, delivery_mode,
+          is_manually_routed, is_escalated, created_at, updated_at
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,false,false,now(),now())
+      params:
+        - "uuid"     # $1: id
+        - "uuid"     # $2: organization_id
+        - "varchar"  # $3: tracking_number
+        - "varchar"  # $4: direction
+        - "uuid"     # $5: document_type_id
+        - "varchar"  # $6: sender_name
+        - "varchar"  # $7: sender_organization (nullable)
+        - "varchar"  # $8: recipient_name (nullable)
+        - "varchar"  # $9: recipient_organization (nullable)
+        - "text"     # $10: recipient_address (nullable)
+        - "uuid"     # $11: submitted_by_user_id
+        - "varchar"  # $12: priority_level
+        - "varchar"  # $13: status_state
+        - "text"     # $14: subject_line (nullable)
+        - "varchar"  # $15: delivery_mode (nullable)
+      timeout_ms: 3000
+      required_permission: "dispatch.create"
+
+    get_by_id:
+      statement: |
+        SELECT id, organization_id, tracking_number, direction, document_type_id,
+               sender_name, sender_organization,
+               recipient_name, recipient_organization, recipient_address,
+               assigned_user_id, assigned_department_id, submitted_by_user_id,
+               priority_level, status_state, subject_line, delivery_mode,
+               is_manually_routed, original_suggested_user_id,
+               overdue_at, acknowledged_at, acknowledged_by_user_id,
+               is_escalated, created_at, updated_at
+        FROM dispatches WHERE id = $1
+      params:
+        - "uuid"  # $1: id
+      timeout_ms: 3000
+      required_permission: "dispatch.view"
+
+    get_by_tracking:
+      statement: |
+        SELECT id, organization_id, tracking_number, direction, document_type_id,
+               sender_name, sender_organization,
+               recipient_name, recipient_organization, recipient_address,
+               assigned_user_id, assigned_department_id, submitted_by_user_id,
+               priority_level, status_state, subject_line, delivery_mode,
+               is_manually_routed, original_suggested_user_id,
+               overdue_at, acknowledged_at, acknowledged_by_user_id,
+               is_escalated, created_at, updated_at
+        FROM dispatches WHERE tracking_number = $1
+      params:
+        - "varchar"  # $1: tracking_number
+      timeout_ms: 2000
+      required_permission: "dispatch.view"
+
+    list_inbox:
+      statement: |
+        SELECT id, organization_id, tracking_number, direction, document_type_id,
+               sender_name, sender_organization,
+               recipient_name, recipient_organization, recipient_address,
+               assigned_user_id, assigned_department_id, submitted_by_user_id,
+               priority_level, status_state, subject_line, delivery_mode,
+               is_manually_routed, original_suggested_user_id,
+               overdue_at, acknowledged_at, acknowledged_by_user_id,
+               is_escalated, created_at, updated_at
+        FROM dispatches
+        WHERE assigned_department_id = $1
+          AND status_state NOT IN ('DELIVERED','DISPATCHED','REJECTED')
+        ORDER BY priority_level DESC, created_at ASC
+        LIMIT $2 OFFSET $3
+      params:
+        - "uuid"     # $1: assigned_department_id
+        - "integer"  # $2: limit
+        - "integer"  # $3: offset
+      timeout_ms: 5000
+      required_permission: "dispatch.view"
+
+    list_outbound:
+      statement: |
+        SELECT id, organization_id, tracking_number, direction, document_type_id,
+               sender_name, sender_organization,
+               recipient_name, recipient_organization, recipient_address,
+               assigned_user_id, assigned_department_id, submitted_by_user_id,
+               priority_level, status_state, subject_line, delivery_mode,
+               is_manually_routed, original_suggested_user_id,
+               overdue_at, acknowledged_at, acknowledged_by_user_id,
+               is_escalated, created_at, updated_at
+        FROM dispatches
+        WHERE direction = 'OUTBOUND'
+        ORDER BY created_at DESC
+        LIMIT $1 OFFSET $2
+      params:
+        - "integer"  # $1: limit
+        - "integer"  # $2: offset
+      timeout_ms: 5000
+      required_permission: "dispatch.view"
+
+    list_by_user:
+      statement: |
+        SELECT id, organization_id, tracking_number, direction, document_type_id,
+               sender_name, sender_organization,
+               recipient_name, recipient_organization, recipient_address,
+               assigned_user_id, assigned_department_id, submitted_by_user_id,
+               priority_level, status_state, subject_line, delivery_mode,
+               is_manually_routed, original_suggested_user_id,
+               overdue_at, acknowledged_at, acknowledged_by_user_id,
+               is_escalated, created_at, updated_at
+        FROM dispatches
+        WHERE submitted_by_user_id = $1
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+      params:
+        - "uuid"     # $1: submitted_by_user_id
+        - "integer"  # $2: limit
+        - "integer"  # $3: offset
+      timeout_ms: 5000
+      required_permission: "dispatch.view"
+
+    update_status:
+      statement: |
+        UPDATE dispatches SET status_state = $2, updated_at = now() WHERE id = $1
+      params:
+        - "uuid"    # $1: id
+        - "varchar" # $2: status_state
+      timeout_ms: 2000
+      required_permission: "dispatch.update"
+
+    assign:
+      statement: |
+        UPDATE dispatches
+        SET assigned_user_id = $2, assigned_department_id = $3, updated_at = now()
+        WHERE id = $1
+      params:
+        - "uuid"  # $1: id
+        - "uuid"  # $2: assigned_user_id (nullable)
+        - "uuid"  # $3: assigned_department_id (nullable)
+      timeout_ms: 2000
+      required_permission: "dispatch.update"
+
+    acknowledge:
+      statement: |
+        UPDATE dispatches
+        SET acknowledged_at = now(), acknowledged_by_user_id = $2,
+            status_state = 'DELIVERED', updated_at = now()
+        WHERE id = $1
+      params:
+        - "uuid"  # $1: id
+        - "uuid"  # $2: acknowledged_by_user_id
+      timeout_ms: 2000
+      required_permission: "dispatch.acknowledge"
+
+    escalate:
+      statement: |
+        UPDATE dispatches
+        SET is_escalated = true, status_state = 'ESCALATED', updated_at = now()
+        WHERE id = $1
+      params:
+        - "uuid"  # $1: id
+      timeout_ms: 2000
+      required_permission: "dispatch.update"
+
+    # Legacy placeholder kept for backwards compat with any existing references.
     fetch_active_inbox_by_department:
       statement: |
-        SELECT
-          id,
-          tracking_number,
-          sender_name,
-          subject_line,
-          priority_level,
-          created_at
+        SELECT id, tracking_number, sender_name, subject_line, priority_level, created_at
         FROM dispatches
         WHERE assigned_department_id = $1
           AND status_state IN ('PENDING_ASSIGNMENT', 'UNDER_REVIEW')
         ORDER BY created_at DESC
-        LIMIT $2 OFFSET $3;
+        LIMIT $2 OFFSET $3
       params:
         - "uuid"     # $1: assigned_department_id
         - "integer"  # $2: limit
         - "integer"  # $3: offset
 
   # ══════════════════════════════════════════════════════════════════════════
+  # PILLAR 1 — DISPATCH EVENTS (timeline log)
+  # ══════════════════════════════════════════════════════════════════════════
+  dispatch_event:
+    create:
+      statement: |
+        INSERT INTO dispatch_events (
+          id, dispatch_id, event_type, actor_user_id,
+          target_user_id, target_department_id, metadata, created_at
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,now())
+      params:
+        - "uuid"    # $1: id
+        - "uuid"    # $2: dispatch_id
+        - "varchar" # $3: event_type
+        - "uuid"    # $4: actor_user_id (nullable)
+        - "uuid"    # $5: target_user_id (nullable)
+        - "uuid"    # $6: target_department_id (nullable)
+        - "text"    # $7: metadata (nullable jsonb text)
+      timeout_ms: 2000
+      required_permission: "dispatch.view"
+
+    list_for_dispatch:
+      statement: |
+        SELECT id, dispatch_id, event_type, actor_user_id,
+               target_user_id, target_department_id, metadata, created_at
+        FROM dispatch_events
+        WHERE dispatch_id = $1
+        ORDER BY created_at ASC
+      params:
+        - "uuid"  # $1: dispatch_id
+      timeout_ms: 3000
+      required_permission: "dispatch.view"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # PILLAR 1 — ROUTING RULES
+  # ══════════════════════════════════════════════════════════════════════════
+  routing_rule:
+    list_active:
+      statement: |
+        SELECT r.id, r.organization_id, r.name, r.priority_order, r.is_active,
+               r.created_at, r.updated_at,
+               c.id AS cond_id, c.condition_type, c.condition_value, c.match_operator,
+               d.id AS dest_id, d.stop_order, d.target_user_id, d.target_department_id
+        FROM routing_rules r
+        LEFT JOIN routing_rule_conditions c ON c.routing_rule_id = r.id
+        LEFT JOIN routing_rule_destinations d ON d.routing_rule_id = r.id
+        WHERE r.is_active = true
+        ORDER BY r.priority_order ASC, c.id, d.stop_order
+      timeout_ms: 3000
+      required_permission: "admin.access"
+
+    get_with_details:
+      statement: |
+        SELECT r.id, r.organization_id, r.name, r.priority_order, r.is_active,
+               r.created_at, r.updated_at,
+               c.id AS cond_id, c.condition_type, c.condition_value, c.match_operator,
+               d.id AS dest_id, d.stop_order, d.target_user_id, d.target_department_id
+        FROM routing_rules r
+        LEFT JOIN routing_rule_conditions c ON c.routing_rule_id = r.id
+        LEFT JOIN routing_rule_destinations d ON d.routing_rule_id = r.id
+        WHERE r.id = $1
+        ORDER BY c.id, d.stop_order
+      params:
+        - "uuid"  # $1: routing_rule id
+      timeout_ms: 3000
+      required_permission: "admin.access"
+
+  # ══════════════════════════════════════════════════════════════════════════
   # PILLAR 2 — GREEN NOTING & APPROVAL WORKFLOW
-  # TODO: Add production queries when Phase 2 (aethel-core) begins.
   # ══════════════════════════════════════════════════════════════════════════
   workflow:
-    # TODO: Replace placeholder with real implementation in Phase 2.
     fetch_minute_sheet_timeline:
       statement: |
         SELECT
@@ -68,16 +293,14 @@ queries:
         INNER JOIN minute_sheets ms ON gn.minute_sheet_id = ms.id
         INNER JOIN users u ON gn.author_officer_id = u.id
         WHERE ms.dispatch_id = $1
-        ORDER BY gn.sequence_order ASC;
+        ORDER BY gn.sequence_order ASC
       params:
         - "uuid"  # $1: dispatch_id
 
   # ══════════════════════════════════════════════════════════════════════════
   # PILLAR 3 — RBAC & IMMUTABLE AUDIT LEDGER
-  # TODO: Add production queries when Phase 2 (aethel-core) begins.
   # ══════════════════════════════════════════════════════════════════════════
   governance:
-    # TODO: Replace placeholder with real implementation in Phase 2.
     query_audit_ledger_range:
       statement: |
         SELECT
@@ -89,7 +312,7 @@ queries:
         FROM audit_ledger
         WHERE created_at >= $1
           AND created_at <= $2
-        ORDER BY created_at DESC;
+        ORDER BY created_at DESC
       params:
         - "timestamptz"  # $1: range_start
         - "timestamptz"  # $2: range_end

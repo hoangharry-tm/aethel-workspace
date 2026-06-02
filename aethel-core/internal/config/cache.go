@@ -3,48 +3,43 @@ package config
 import (
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
 )
 
-type cachedEntry struct {
-	config    *OrgConfig
+const cacheTTL = 5 * time.Minute
+
+// ConfigCache holds the single runtime config for this installation.
+// Safe for concurrent use.
+type ConfigCache struct {
+	mu        sync.RWMutex
+	value     *OrgConfig
 	expiresAt time.Time
 }
 
-// ConfigCache is a per-org in-memory cache with TTL. Safe for concurrent use.
-type ConfigCache struct {
-	mu      sync.RWMutex
-	entries map[uuid.UUID]*cachedEntry
-}
-
 func NewConfigCache() *ConfigCache {
-	return &ConfigCache{
-		entries: make(map[uuid.UUID]*cachedEntry),
-	}
+	return &ConfigCache{}
 }
 
-func (c *ConfigCache) Get(orgID uuid.UUID) (*OrgConfig, bool) {
+// Get returns the cached config and true if the cache is valid; nil and false on miss.
+func (c *ConfigCache) Get() (*OrgConfig, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	e, ok := c.entries[orgID]
-	if !ok || time.Now().After(e.expiresAt) {
+	if c.value == nil || time.Now().After(c.expiresAt) {
 		return nil, false
 	}
-	return e.config, true
+	return c.value, true
 }
 
-func (c *ConfigCache) Set(orgID uuid.UUID, cfg *OrgConfig, ttl time.Duration) {
+// Set stores a new config value, resetting the TTL.
+func (c *ConfigCache) Set(cfg *OrgConfig) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.entries[orgID] = &cachedEntry{
-		config:    cfg,
-		expiresAt: time.Now().Add(ttl),
-	}
+	c.value = cfg
+	c.expiresAt = time.Now().Add(cacheTTL)
 }
 
-func (c *ConfigCache) Invalidate(orgID uuid.UUID) {
+// Invalidate clears the cache. The next Get will miss and trigger a DB reload.
+func (c *ConfigCache) Invalidate() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	delete(c.entries, orgID)
+	c.value = nil
 }
