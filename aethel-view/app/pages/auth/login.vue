@@ -27,9 +27,7 @@ async function handleLogin() {
 <template>
   <div class="p-8">
     <div class="mb-6">
-      <h2 class="text-xl font-bold text-body">
-        Sign in to Aethel Workspace
-      </h2>
+      <h2 class="text-xl font-bold text-body">Sign in to Aethel Workspace</h2>
       <p class="text-sm text-muted mt-1">
         Enter your credentials to access your workspace.
       </p>
