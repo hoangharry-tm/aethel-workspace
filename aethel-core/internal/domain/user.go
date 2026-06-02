@@ -75,6 +75,9 @@ type SessionRepository interface {
 	GetByTokenHash(ctx context.Context, tokenHash string) (*Session, error)
 	DeleteByID(ctx context.Context, id uuid.UUID) error
 	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
+	// RotateSession deletes oldID and inserts newSession in a single transaction.
+	// A stolen token used a second time is rejected because the old row is gone.
+	RotateSession(ctx context.Context, oldID uuid.UUID, newSession *Session) error
 }
 
 type PasswordResetRepository interface {

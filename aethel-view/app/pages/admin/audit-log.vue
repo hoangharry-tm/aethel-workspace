@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'workspace' })
+definePageMeta({ layout: 'workspace', middleware: ['role'], requiredRole: 'ADMIN' })
 </script>
 
 <template>

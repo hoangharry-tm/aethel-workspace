@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -13,11 +12,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"aethel-core/internal/api/handlers"
+	apiMW "aethel-core/internal/api/middleware"
+	"aethel-core/internal/app"
 	"aethel-core/internal/config"
 	"aethel-core/internal/database"
 	"aethel-core/internal/domain"
@@ -84,16 +84,35 @@ func (s *Server) buildRouter(
 ) *chi.Mux {
 	r := chi.NewRouter()
 
-	// ── Global middleware stack ───────────────────────────────────────────────
-	r.Use(middleware.RequestID)
-	r.Use(zerologMiddleware)
+	// ── Global middleware stack (order matters) ───────────────────────────────
+	// 1. Recovery — catch panics before any other middleware
 	r.Use(middleware.Recoverer)
+	// 2. Security headers — set on every response including panic recoveries
+	r.Use(apiMW.SecurityHeaders)
+	// 3. Request ID — for correlation in logs
+	r.Use(middleware.RequestID)
+	// 4. Structured request logger
+	r.Use(zerologMiddleware)
+	// 5. Global rate limit — 600 RPM per IP, covers unauthenticated traffic
+	r.Use(apiMW.RateLimit)
+	// 6. CORS
 	r.Use(corsMiddleware)
+	// 7. JWT extraction — sets user/role on context, injects app.OrgID
 	r.Use(s.jwtMiddleware)
-	r.Use(tenantMiddleware)
+	// 8. Per-user rate limit — 300 RPM per authenticated user (post-JWT)
+	r.Use(apiMW.RateLimitAuthenticated(func(req *http.Request) string {
+		uid, _ := rbac.UserIDFromCtx(req.Context())
+		return uid
+	}))
+	// 9. CSRF — rejects mutating requests where cookie ≠ header
+	r.Use(apiMW.CSRFProtect)
 
 	// ── Health probes ─────────────────────────────────────────────────────────
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "ok")
+	})
+	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "ok")
 	})
@@ -119,8 +138,9 @@ func (s *Server) buildRouter(
 		r.With(rbac.Require("admin.access")).Patch("/admin/config/features", cfgHandler.PatchFeatures)
 		r.With(rbac.Require("admin.access")).Patch("/admin/config/org", cfgHandler.PatchOrg)
 
-		// Auth endpoints (public — no JWT required).
-		r.With(rbac.Require("public")).Post("/auth/login", authSvc.Login)
+		// Auth endpoints — login and refresh are public; logout requires auth.
+		// Login has an additional strict per-IP rate limit (20 RPM).
+		r.With(rbac.Require("public"), apiMW.RateLimitLogin).Post("/auth/login", authSvc.Login)
 		r.With(rbac.Require("public")).Post("/auth/refresh", authSvc.Refresh)
 		r.With(rbac.Require("dispatch.view")).Post("/auth/logout", authSvc.Logout)
 		r.With(rbac.Require("public")).Post("/auth/password-reset/request", authSvc.RequestPasswordReset)
@@ -142,7 +162,6 @@ func (s *Server) buildRouter(
 			r.With(rbac.Require("dispatch.view")).Get("/attachments", dispatchSvc.ListAttachments)
 			r.With(rbac.Require("dispatch.create")).Post("/attachments", dispatchSvc.UploadAttachment)
 			r.With(rbac.Require("dispatch.assign")).Delete("/attachments/{att_id}", dispatchSvc.DeleteAttachment)
-			// Workflow routes nested under the same dispatch ID.
 			r.With(rbac.Require("workflow.view")).Get("/minute-sheet", workflowSvc.GetMinuteSheet)
 			r.With(rbac.Require("workflow.view")).Get("/green-notes", workflowSvc.ListGreenNotes)
 			r.With(rbac.Require("workflow.approve")).Post("/green-notes", workflowSvc.AppendGreenNote)
@@ -240,26 +259,15 @@ func (s *Server) jwtMiddleware(next http.Handler) http.Handler {
 		}
 
 		userID, _ := claims["sub"].(string)
-		orgID, _ := claims["org"].(string)
 		roleStr, _ := claims["role"].(string)
 		role := domain.UserRole(roleStr)
 
+		// Single-tenant: the JWT no longer carries an org claim.
+		// Inject the boot-time OrgID so all handlers get a consistent value via rbac.OrgIDFromCtx.
+		orgID := app.OrgID.String()
+
 		ctx := rbac.SetUserContext(r.Context(), userID, orgID, role)
 		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-// tenantMiddleware injects the org UUID from rbac context into the config ctxKey.
-func tenantMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		orgIDStr, ok := rbac.OrgIDFromCtx(r.Context())
-		if ok && orgIDStr != "" {
-			if orgID, err := uuid.Parse(orgIDStr); err == nil {
-				ctx := context.WithValue(r.Context(), config.OrgIDContextKey, orgID)
-				r = r.WithContext(ctx)
-			}
-		}
-		next.ServeHTTP(w, r)
 	})
 }
 
@@ -267,7 +275,8 @@ func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Request-ID")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Request-ID, X-CSRF-Token")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return

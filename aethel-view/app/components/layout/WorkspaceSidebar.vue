@@ -7,6 +7,8 @@ import type { NavGroup } from '~/composables/useRuntimeConfig'
 const { currentUser } = useMockData()
 const { isOpen: isDrawerOpen, close: closeDrawer } = useSidebarDrawer()
 const { config } = useAppRuntimeConfig()
+// Route guards and nav visibility use the real role from JWT, not the prototype mock.
+const { user: authUser } = useAuth()
 
 const isCollapsed = ref(false)
 const route = useRoute()
@@ -59,9 +61,12 @@ const navGroups = computed<NavGroup[]>(() =>
   config.value.nav.length > 0 ? config.value.nav : hardcodedNavGroups.value,
 )
 
-const visibleGroups = computed(() =>
-  navGroups.value.filter(g => g.roles.includes(currentUser.value.role)),
-)
+// Gate nav groups using the real JWT role. Falls back to mock role in prototype mode
+// (when the user hasn't authenticated through the real backend yet).
+const visibleGroups = computed(() => {
+  const role = authUser.value?.role ?? currentUser.value.role
+  return navGroups.value.filter(g => g.roles.includes(role))
+})
 
 function isActive(to: string) {
   return route.path === to || route.path.startsWith(to + '/')

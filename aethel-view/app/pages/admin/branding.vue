@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useAppRuntimeConfig } from '~/composables/useRuntimeConfig'
 
-definePageMeta({ layout: 'workspace' })
+definePageMeta({ layout: 'workspace', middleware: ['role'], requiredRole: 'ADMIN' })
 
 const { config, updateBranding } = useAppRuntimeConfig()
 const toast = useToast()

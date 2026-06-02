@@ -98,6 +98,14 @@ func runServe(cmd *cobra.Command, args []string) error {
 	defer db.Close()
 	slog.Info("database connected")
 
+	// Log algorithm only — never log the key value or any secret env var content.
+	jwtSecret := os.Getenv("AETHEL_JWT_SECRET")
+	if jwtSecret == "" {
+		slog.Warn("AETHEL_JWT_SECRET not set — using insecure development default")
+	} else {
+		slog.Info("JWT algorithm: HS256")
+	}
+
 	// 3. Auto-run migrations if configured.
 	if envCfg.Migrations.AutoRunOnStartup {
 		m := database.NewMigrator(db, dbCfg, envCfg)
@@ -129,11 +137,11 @@ func runServe(cmd *cobra.Command, args []string) error {
 		routingRepo  domain.RoutingRuleRepository   = repos.NewRoutingRuleRepo(db, queries)
 	)
 
-	// Auth pillar — implemented in Sprint 1 (noops kept until Sprint 1 repos land).
+	// Auth pillar — real implementations wired in Sprint 1.5.
 	var (
-		userRepo    domain.UserRepository          = &noopUserRepo{}
-		sessionRepo domain.SessionRepository       = &noopSessionRepo{}
-		pwResetRepo domain.PasswordResetRepository = &noopPWResetRepo{}
+		userRepo    domain.UserRepository          = repos.NewUserRepo(db)
+		sessionRepo domain.SessionRepository       = repos.NewSessionRepo(db)
+		pwResetRepo domain.PasswordResetRepository = repos.NewPasswordResetRepo(db)
 		auditRepo   domain.AuditRepository         = &noopAuditRepo{}
 	)
 
@@ -275,43 +283,7 @@ func envAddr() string {
 	return ":" + port
 }
 
-// ── stub repositories (replaced in Sprint 1 / Sprint 3–4) ────────────────────
-
-type noopUserRepo struct{}
-
-func (r *noopUserRepo) GetByID(_ context.Context, _, _ uuid.UUID) (*domain.User, error) {
-	return nil, domain.ErrNotFound
-}
-func (r *noopUserRepo) GetByEmail(_ context.Context, _ uuid.UUID, _ string) (*domain.User, error) {
-	return nil, domain.ErrNotFound
-}
-func (r *noopUserRepo) List(_ context.Context, _ uuid.UUID, _ domain.Page) ([]domain.User, error) {
-	return nil, nil
-}
-func (r *noopUserRepo) Create(_ context.Context, _ *domain.User) error                    { return nil }
-func (r *noopUserRepo) Update(_ context.Context, _ *domain.User) error                    { return nil }
-func (r *noopUserRepo) UpdatePasswordHash(_ context.Context, _ uuid.UUID, _ string) error { return nil }
-func (r *noopUserRepo) IncrementFailedLogins(_ context.Context, _ uuid.UUID) error        { return nil }
-func (r *noopUserRepo) ResetFailedLogins(_ context.Context, _ uuid.UUID) error            { return nil }
-func (r *noopUserRepo) LockUntil(_ context.Context, _ uuid.UUID, _ time.Time) error       { return nil }
-func (r *noopUserRepo) SetLastLogin(_ context.Context, _ uuid.UUID) error                 { return nil }
-
-type noopSessionRepo struct{}
-
-func (r *noopSessionRepo) Create(_ context.Context, _ *domain.Session) error { return nil }
-func (r *noopSessionRepo) GetByTokenHash(_ context.Context, _ string) (*domain.Session, error) {
-	return nil, domain.ErrNotFound
-}
-func (r *noopSessionRepo) DeleteByID(_ context.Context, _ uuid.UUID) error     { return nil }
-func (r *noopSessionRepo) DeleteByUserID(_ context.Context, _ uuid.UUID) error { return nil }
-
-type noopPWResetRepo struct{}
-
-func (r *noopPWResetRepo) Create(_ context.Context, _ *domain.PasswordResetToken) error { return nil }
-func (r *noopPWResetRepo) GetByTokenHash(_ context.Context, _ string) (*domain.PasswordResetToken, error) {
-	return nil, domain.ErrNotFound
-}
-func (r *noopPWResetRepo) MarkUsed(_ context.Context, _ uuid.UUID) error { return nil }
+// ── stub repositories (replaced in Sprint 3–4) ───────────────────────────────
 
 type noopAuditRepo struct{}
 

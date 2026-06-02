@@ -2,7 +2,7 @@
 import { useMockData } from '~/composables/useMockData'
 import type { UrgencyLevel } from '~/composables/useMockData'
 
-definePageMeta({ layout: 'workspace' })
+definePageMeta({ layout: 'workspace', middleware: ['role'], requiredRole: 'ADMIN' })
 
 const { routingRules } = useMockData()
 const toast = useToast()

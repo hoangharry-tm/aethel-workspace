@@ -6,6 +6,7 @@ import { useSidebarDrawer } from '~/composables/useSidebarDrawer'
 const { currentUser, setRole, notifications } = useMockData()
 const { open: openNotifications } = useNotificationDrawer()
 const { open: openSidebar } = useSidebarDrawer()
+const { logout } = useAuth()
 const router = useRouter()
 
 const unreadCount = computed(() => notifications.filter(n => !n.read).length)
@@ -39,6 +40,11 @@ function handleSearch() {
   if (searchQuery.value.trim()) {
     router.push({ path: '/search', query: { q: searchQuery.value } })
   }
+}
+
+async function handleLogout() {
+  await logout()
+  await navigateTo('/auth/login', { replace: true })
 }
 
 const profileItems = computed(() => [
@@ -77,7 +83,7 @@ const profileItems = computed(() => [
     {
       label: 'Sign Out',
       icon: 'i-lucide-log-out',
-      to: '/auth/login',
+      onSelect: handleLogout,
     },
   ],
 ])
@@ -159,9 +165,13 @@ const profileItems = computed(() => [
           <p class="text-xs text-muted">
             {{ currentUser.email }}
           </p>
-          <div class="mt-1">
+          <div class="mt-1 flex items-center gap-1">
             <UBadge color="primary" variant="soft" size="xs">
               {{ currentUser.role }}
+            </UBadge>
+            <!-- Role switcher is prototype/demo only — route guards use JWT role from useAuth() -->
+            <UBadge color="warning" variant="soft" size="xs">
+              Demo mode
             </UBadge>
           </div>
         </div>

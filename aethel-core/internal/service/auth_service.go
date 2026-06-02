@@ -26,6 +26,8 @@ const (
 	keyLength            = 32
 	accessTokenDuration  = 15 * time.Minute
 	refreshTokenDuration = 7 * 24 * time.Hour
+	lockoutThreshold     = 5
+	lockoutDuration      = 15 * time.Minute
 )
 
 type AuthService struct {
@@ -58,6 +60,7 @@ type LoginResult struct {
 func (s *AuthService) Login(ctx context.Context, orgID uuid.UUID, email, password, ip, ua string) (*LoginResult, error) {
 	user, err := s.users.GetByEmail(ctx, orgID, email)
 	if err != nil {
+		// Do not reveal whether the email exists — return the same error as wrong password.
 		_ = s.writeAudit(ctx, orgID, nil, domain.AuditUserLoginFailed, nil, ip, ua)
 		return nil, domain.ErrUnauthorized
 	}
@@ -67,12 +70,17 @@ func (s *AuthService) Login(ctx context.Context, orgID uuid.UUID, email, passwor
 		return nil, domain.ErrUnauthorized
 	}
 
+	// Lockout check runs before Argon2id to prevent timing side-channels.
 	if user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
 		return nil, domain.ErrAccountLocked
 	}
 
 	if !s.verifyPassword(password, user.PasswordHash) {
 		_ = s.users.IncrementFailedLogins(ctx, user.ID)
+		// Lock the account when the threshold is crossed.
+		if user.FailedLoginAttempts+1 >= lockoutThreshold {
+			_ = s.users.LockUntil(ctx, user.ID, time.Now().Add(lockoutDuration))
+		}
 		_ = s.writeAudit(ctx, orgID, &user.ID, domain.AuditUserLoginFailed, nil, ip, ua)
 		return nil, domain.ErrUnauthorized
 	}
@@ -112,8 +120,8 @@ func (s *AuthService) Login(ctx context.Context, orgID uuid.UUID, email, passwor
 	}, nil
 }
 
-func (s *AuthService) RefreshSession(ctx context.Context, refreshToken string) (*LoginResult, error) {
-	tokenHash := hashToken(refreshToken)
+func (s *AuthService) RefreshSession(ctx context.Context, rawRefreshToken string) (*LoginResult, error) {
+	tokenHash := hashToken(rawRefreshToken)
 
 	session, err := s.sessions.GetByTokenHash(ctx, tokenHash)
 	if err != nil {
@@ -125,19 +133,9 @@ func (s *AuthService) RefreshSession(ctx context.Context, refreshToken string) (
 		return nil, domain.ErrUnauthorized
 	}
 
-	// We need user+orgID to issue new token; the handler must provide orgID via context.
-	// For simplicity we embed orgID in the refresh token as a lookup join in production;
-	// here we look up the user and their org directly.
 	user, err := s.users.GetByID(ctx, uuid.UUID{}, session.UserID)
-	if err != nil {
+	if err != nil || !user.IsActive {
 		return nil, domain.ErrUnauthorized
-	}
-
-	_ = s.sessions.DeleteByID(ctx, session.ID)
-
-	accessToken, err := s.issueAccessToken(user)
-	if err != nil {
-		return nil, fmt.Errorf("issue access token: %w", err)
 	}
 
 	newRefresh, newHash, err := s.generateRefreshToken()
@@ -153,8 +151,16 @@ func (s *AuthService) RefreshSession(ctx context.Context, refreshToken string) (
 		ClientIPAddress:  session.ClientIPAddress,
 		UserAgent:        session.UserAgent,
 	}
-	if err := s.sessions.Create(ctx, newSession); err != nil {
-		return nil, fmt.Errorf("create session: %w", err)
+
+	// Atomic: deletes old session and inserts new one in a single transaction.
+	// If a stolen token is replayed after rotation, the old row is gone → ErrUnauthorized.
+	if err := s.sessions.RotateSession(ctx, session.ID, newSession); err != nil {
+		return nil, fmt.Errorf("rotate session: %w", err)
+	}
+
+	accessToken, err := s.issueAccessToken(user)
+	if err != nil {
+		return nil, fmt.Errorf("issue access token: %w", err)
 	}
 
 	return &LoginResult{
@@ -164,8 +170,15 @@ func (s *AuthService) RefreshSession(ctx context.Context, refreshToken string) (
 	}, nil
 }
 
-func (s *AuthService) Logout(ctx context.Context, orgID, userID uuid.UUID, ip, ua string) error {
-	_ = s.sessions.DeleteByUserID(ctx, userID)
+// Logout invalidates the specific session identified by rawRefreshToken.
+// Passing an empty rawRefreshToken skips session deletion (graceful degradation).
+func (s *AuthService) Logout(ctx context.Context, orgID, userID uuid.UUID, rawRefreshToken, ip, ua string) error {
+	if rawRefreshToken != "" {
+		tokenHash := hashToken(rawRefreshToken)
+		if session, err := s.sessions.GetByTokenHash(ctx, tokenHash); err == nil {
+			_ = s.sessions.DeleteByID(ctx, session.ID)
+		}
+	}
 	_ = s.writeAudit(ctx, orgID, &userID, domain.AuditUserLogout, nil, ip, ua)
 	return nil
 }
@@ -173,15 +186,14 @@ func (s *AuthService) Logout(ctx context.Context, orgID, userID uuid.UUID, ip, u
 func (s *AuthService) RequestPasswordReset(ctx context.Context, orgID uuid.UUID, email string) error {
 	user, err := s.users.GetByEmail(ctx, orgID, email)
 	if err != nil {
-		// Return nil to avoid user enumeration.
-		return nil
+		return nil // avoid user enumeration
 	}
 
 	token, tokenHash, err := s.generateRefreshToken()
 	if err != nil {
 		return err
 	}
-	_ = token // In production: send token via email.
+	_ = token // production: send via email
 
 	prt := &domain.PasswordResetToken{
 		ID:        uuid.New(),
@@ -213,7 +225,8 @@ func (s *AuthService) ConfirmPasswordReset(ctx context.Context, token, newPasswo
 	return s.pwReset.MarkUsed(ctx, prt.ID)
 }
 
-// issueAccessToken issues a signed JWT for the given user.
+// issueAccessToken issues a signed JWT. The org claim is intentionally absent:
+// this is a single-tenant system and including it adds surface area with no benefit.
 func (s *AuthService) issueAccessToken(user *domain.User) (string, error) {
 	secret := os.Getenv("AETHEL_JWT_SECRET")
 	if secret == "" {
@@ -223,7 +236,6 @@ func (s *AuthService) issueAccessToken(user *domain.User) (string, error) {
 	now := time.Now()
 	claims := jwt.MapClaims{
 		"sub":  user.ID.String(),
-		"org":  user.OrganizationID.String(),
 		"role": string(user.Role),
 		"iat":  now.Unix(),
 		"exp":  now.Add(accessTokenDuration).Unix(),
@@ -269,7 +281,6 @@ func (s *AuthService) verifyPassword(password, phc string) bool {
 		return false
 	}
 
-	// Split b64Salt and b64Hash on the last '$'.
 	for i := len(b64Salt) - 1; i >= 0; i-- {
 		if b64Salt[i] == '$' {
 			b64Hash = b64Salt[i+1:]
@@ -289,7 +300,6 @@ func (s *AuthService) verifyPassword(password, phc string) bool {
 
 	computed := argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, uint32(len(expectedHash)))
 
-	// Constant-time comparison.
 	if len(computed) != len(expectedHash) {
 		return false
 	}

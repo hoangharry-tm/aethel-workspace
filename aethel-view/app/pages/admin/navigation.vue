@@ -2,7 +2,7 @@
 import { useAppRuntimeConfig } from '~/composables/useRuntimeConfig'
 import type { NavGroup, NavItem } from '~/composables/useRuntimeConfig'
 
-definePageMeta({ layout: 'workspace' })
+definePageMeta({ layout: 'workspace', middleware: ['role'], requiredRole: 'ADMIN' })
 
 const { config, updateNav } = useAppRuntimeConfig()
 const toast = useToast()
