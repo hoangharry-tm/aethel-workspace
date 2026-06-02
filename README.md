@@ -1,224 +1,174 @@
 # Aethel Workspace
 
-Æthel Workspace is a secure, open-source, configuration-driven e-office platform that centralizes administrative workflows, smart office dynamics, and secure information routing into a unified, high-performance digital ecosystem.
+**Open-source e-office platform for government and institutional document workflows.**
 
-The system follows a **runtime-configurable** architecture: two IT-facing YAML blueprints provide seed values loaded at first boot; all runtime configuration (branding, navigation, feature flags) is stored in PostgreSQL and managed through the `/admin/*` pages — no recompilation required.
+Aethel replaces manual paper-based correspondence with a structured digital system: every inbound letter is tracked, routed to the right desk, annotated with a cryptographically-chained minute sheet, and logged to a tamper-evident audit ledger — all without touching a config file after first boot.
+
+Designed for organizations where accountability, chain-of-custody, and audit compliance aren't optional.
 
 ---
 
-## System Architecture
+## Why Aethel
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                    Aethel Workspace                         │
-│                                                             │
-│   aethel-view/          aethel-core/         blueprints/   │
-│   (Nuxt 4 Frontend)     (Go Backend)         (YAML seeds)  │
-│                                                             │
-│   ┌─────────────┐      ┌─────────────┐      ┌───────────┐  │
-│   │  Vue 3 +    │◄────►│ chi router  │◄────►│ server-   │  │
-│   │  Nuxt UI v4 │      │ + RBAC      │      │ database  │  │
-│   │  + Pinia    │      │ + JWT auth  │      │ .yaml     │  │
-│   └─────────────┘      └──────┬──────┘      └───────────┘  │
-│                               │                             │
-│                        ┌──────▼──────┐                      │
-│                        │ PostgreSQL  │                      │
-│                        │ (runtime    │                      │
-│                        │  config +   │                      │
-│                        │  all data)  │                      │
-│                        └─────────────┘                      │
-└─────────────────────────────────────────────────────────────┘
+Most "workflow" tools are generic project trackers dressed up with custom fields. Aethel is built around three real institutional processes:
+
+**Diarization** — Inbound correspondence is received, assigned a tracking number, routed by configurable rules (document type, sender, urgency), and handed to the correct department. Every routing decision is recorded.
+
+**Green Noting** — Each dispatch has a minute sheet where staff append sequential notes. Notes are chained with SHA-256 hashes: no note can be silently altered or deleted without breaking the chain. Approvals are countersigned.
+
+**Audit Ledger** — An append-only, monthly-partitioned event log with a checksum chain spanning the entire ledger. The `/admin/audit-log/verify` endpoint re-computes the chain on demand and reports exactly which row was tampered with, if any.
+
+---
+
+## How It Works
+
+Configuration is split between two layers: **seed** (YAML, set once by IT at deployment) and **runtime** (PostgreSQL, editable by admins in the browser — no recompilation, no restart).
+
 ```
+Nuxt 4 frontend  ──►  Go backend (chi + RBAC + JWT)  ──►  PostgreSQL 16
+                              │
+                    YAML blueprints (seed only)
+                    branding, nav, DB connection
+```
+
+The backend serves `GET /api/v1/config` with a 5-minute per-org in-memory cache embedded in the initial SSR HTML. Admin changes to branding, navigation, or feature flags propagate to all users on next page load — no CDN invalidation, no build step.
+
+---
+
+## Feature Highlights
+
+- **Role-based access control** — three built-in roles (ADMIN / RECEPTION / USER) with granular permission strings; `sys_admin` gating for sensitive audit views
+- **Routing rule engine** — priority-ordered rules matching on document type, sender organization, and urgency level; evaluated at dispatch creation
+- **Runtime branding** — IT admins change the organization's color scheme, logo, and font from the browser; takes effect immediately for all users
+- **Escalation worker** — background goroutine evaluates overdue dispatches on a configurable interval and transitions them to ESCALATED with a full audit trail
+- **SSE notifications** — real-time delivery to connected browser clients via a goroutine-safe SSE broker; no WebSocket dependency
+- **42 database migrations** — full schema with multi-tenancy (`organization_id` on every table), RLS-ready, monthly-partitioned audit ledger
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Nuxt 4, Vue 3, Nuxt UI v4, Pinia, Tailwind CSS v4 |
+| Backend | Go, chi router, cobra CLI, zerolog, Argon2id, JWT |
+| Database | PostgreSQL 16 (uuid-ossp, pgcrypto, pg_trgm) |
+| Auth | Argon2id password hashing, JWT access + opaque refresh tokens |
+| Infrastructure | Docker Compose, Kubernetes (k8s/), GitHub Actions CI/CD |
+| Testing | Vitest + Playwright (frontend), Go race detector + integration tests (backend) |
 
 ---
 
 ## Prerequisites
 
-| Tool | Minimum version |
+| Tool | Version |
 |---|---|
 | Go | 1.22+ |
 | Node.js | 20+ |
 | pnpm | 9+ |
 | Docker + Docker Compose | v2+ |
 | PostgreSQL | 16+ (or use Docker) |
-| Air (Go hot reload) | latest |
-| `make` | any |
 
 ---
 
 ## Quick Start
 
 ```bash
-# 1. Copy environment config
-cp .env.example .env          # edit DB credentials as needed
+# 1. Copy and configure environment
+cp .env.example .env
 
-# 2. Start all services (postgres + backend + frontend)
+# 2. Start all services (PostgreSQL + backend + frontend)
 make dev
 
 # 3. Apply database migrations
 make migrate-up
 ```
 
-Frontend: <http://localhost:3000>  
-Backend API: <http://localhost:8080/api/v1>  
-Health probe: <http://localhost:8080/healthz>
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:8080/api/v1 |
+| Health probe | http://localhost:8080/healthz |
 
 ---
 
-## Available Commands
+## Commands
 
-### Top-level (`make`)
-
-```bash
-make help               # Print all available make targets
-```
-
-#### Development
+### Development
 
 ```bash
-make dev                # Start all services via Docker Compose (postgres + backend + frontend)
-make dev-fe             # Start only the Nuxt dev server (hot reload, no Docker)
-make dev-be             # Start only the Go backend with Air hot reload (requires postgres running separately)
-make dev-db             # Start only the postgres container
-make dev-down           # Stop and remove all dev containers (volumes preserved)
-make dev-reset          # Full reset — stop, delete volumes, start fresh database
+make dev                # Start all services via Docker Compose
+make dev-fe             # Nuxt dev server only (hot reload)
+make dev-be             # Go backend with Air hot reload
+make dev-db             # PostgreSQL container only
+make dev-down           # Stop all containers (volumes preserved)
+make dev-reset          # Full reset — wipe volumes, fresh database
 ```
 
-#### Build
+### Testing
 
 ```bash
-make build              # Build frontend and backend
-make build-fe           # Build the Nuxt app  (→ aethel-view/.output/)
-make build-be           # Compile Go binary   (→ aethel-core/bin/aethel)
-make build-docker       # Build both Docker images locally (does not push)
+make test               # All tests (frontend + backend)
+make test-fe            # Vitest unit + component tests
+make test-be            # Go tests with race detector
+make test-e2e           # Playwright end-to-end
 ```
 
-#### Testing
-
-```bash
-make test               # Run all tests (frontend + backend)
-make test-fe            # Run frontend Vitest tests (unit + component)
-make test-be            # Run Go tests with race detector
-make test-e2e           # Run Playwright end-to-end tests (requires dev server)
-```
-
-#### Linting & Formatting
-
-```bash
-make lint               # Lint everything (frontend + backend + YAML blueprints)
-make lint-fe            # ESLint the frontend
-make lint-be            # golangci-lint the backend
-make lint-yaml          # yamllint on blueprints/
-make fmt                # Format Go (gofmt) and frontend (prettier)
-```
-
-#### Database & Migrations
+### Database
 
 ```bash
 make migrate-up         # Apply all pending migrations
-make migrate-down       # Roll back the last applied migration
-make migrate-status     # Show applied and pending migrations
+make migrate-down       # Roll back the last migration
+make migrate-status     # Show applied / pending migrations
 make migrate-validate   # Dry-run: render templates, validate SQL (no DB writes)
-make db-shell           # Open a psql shell into the dev database
-make db-dump            # Dump the dev database to /tmp/aethel-dump-<timestamp>.sql
+make db-shell           # Open psql into the dev database
+make db-dump            # Dump dev database to /tmp/aethel-dump-<timestamp>.sql
 ```
 
-#### Kubernetes
+### Build
 
 ```bash
-make k8s-apply-dev      # Apply all k8s manifests to the dev namespace
-make k8s-apply-prod     # Apply all k8s manifests to the production namespace
-make k8s-status         # Show all resources in the production namespace
+make build              # Build frontend + backend
+make build-docker       # Build both Docker images locally
 ```
 
-#### Utilities
-
-```bash
-make clean              # Remove build artifacts, .nuxt cache, and Go build cache
-```
-
----
-
-### Frontend (`aethel-view/` — pnpm)
-
-```bash
-pnpm dev                # Dev server at http://localhost:3000 (hot reload)
-pnpm build              # Production build
-pnpm preview            # Preview production build locally
-pnpm postinstall        # Re-run nuxt prepare (auto-runs after pnpm install)
-
-pnpm test               # Run all Vitest tests
-pnpm test:unit          # Unit tests only  (test/unit/*.spec.ts, Node env)
-pnpm test:nuxt          # Component tests  (test/nuxt/*.spec.ts, happy-dom env)
-pnpm test:coverage      # Tests with V8 coverage report
-pnpm test:watch         # Vitest in watch mode
-
-pnpm test:e2e           # Playwright E2E tests (Chromium)
-pnpm test:e2e:ui        # Playwright with interactive UI
-```
-
----
-
-### Backend CLI (`aethel-core/` — Go)
-
-Build once, then use the binary:
+### Backend CLI (direct)
 
 ```bash
 cd aethel-core
-go build -o bin/aethel ./cmd/aethel
-```
-
-Or run directly with `go run`:
-
-```bash
-go run ./cmd/aethel <command>
-```
-
-#### Server
-
-```bash
-aethel serve                    # Start the HTTP server (default port 8080)
-```
-
-#### Migrations
-
-```bash
-aethel migrate up               # Apply all pending migrations
-aethel migrate down             # Roll back 1 migration (default)
-aethel migrate down --steps N   # Roll back N migrations
-aethel migrate status           # List applied / pending migrations
-aethel migrate validate         # Render templates and validate SQL (no DB writes)
+go run ./cmd/aethel serve              # Start HTTP server on :8080
+go run ./cmd/aethel migrate up         # Apply all pending migrations
+go run ./cmd/aethel migrate status     # List applied / pending
+go run ./cmd/aethel migrate validate   # Validate without writing
 ```
 
 ---
 
-## Environment Variables
+## Configuration
 
-| Variable                    | Required   | Description                                                  |
-| --------------------------- | ---------- | ------------------------------------------------------------ |
-| `AETHEL_ENV`                | No         | Runtime environment: `development` (default) or `production` |
-| `AETHEL_PORT`               | No         | HTTP listen port (default `8080`)                            |
-| `AETHEL_DB_PASSWORD`        | Yes        | PostgreSQL password                                          |
-| `AETHEL_DB_DSN`             | No         | Full DSN (overrides individual connection fields)            |
-| `AETHEL_JWT_SECRET`         | Yes (prod) | HS256 signing secret (defaults to a dev-only value)          |
-| `AETHEL_ARGON2_MEMORY_KIB`  | No         | Argon2id memory cost in KiB (default `65536`)                |
-| `AETHEL_ARGON2_ITERATIONS`  | No         | Argon2id iteration count (default `3`)                       |
-| `AETHEL_ARGON2_PARALLELISM` | No         | Argon2id parallelism (default `4`)                           |
+### Environment variables
 
-See `.env.example` for a full reference.
+| Variable | Required | Description |
+|---|---|---|
+| `AETHEL_DB_PASSWORD` | Yes | PostgreSQL password |
+| `AETHEL_JWT_SECRET` | Yes (prod) | HS256 signing secret |
+| `AETHEL_ENV` | No | `development` (default) or `production` |
+| `AETHEL_PORT` | No | HTTP listen port (default `8080`) |
+| `AETHEL_DB_DSN` | No | Full DSN (overrides individual fields) |
+| `AETHEL_ARGON2_MEMORY_KIB` | No | Argon2id memory cost in KiB (default `65536`) |
 
----
+See `.env.example` for the full reference.
 
-## Blueprint Files (IT-facing)
+### Blueprint files (IT-facing)
 
-Only two YAML files are intended for IT administrators:
+Only two YAML files need to be touched by IT at deployment:
 
-| File                              | Purpose                                                               |
-| --------------------------------- | --------------------------------------------------------------------- |
-| `blueprints/server-database.yaml` | DB connection, pool config, migration settings, schema aliases        |
-| `blueprints/ui-theme.yaml`        | Branding seed (primary color, font, logo) — loaded once at first boot |
+| File | Purpose |
+|---|---|
+| `blueprints/server-database.yaml` | DB connection, pool config, schema aliases |
+| `blueprints/ui-theme.yaml` | Initial branding seed — loaded once at first boot |
 
-All other configuration (navigation, feature flags, org profile) is managed at runtime through the `/admin/*` pages and stored in PostgreSQL.
+Everything else (navigation, feature flags, branding overrides, org profile) is managed at runtime through `/admin/*` and stored in PostgreSQL.
 
 ---
 
@@ -226,29 +176,48 @@ All other configuration (navigation, feature flags, org profile) is managed at r
 
 ```
 aethel-workspace/
-├── aethel-view/          # Nuxt 4 frontend
+├── aethel-view/          # Nuxt 4 frontend (17 pages, 3 roles)
 ├── aethel-core/          # Go backend
 │   ├── cmd/aethel/       # CLI entry point (cobra)
 │   └── internal/
 │       ├── api/          # HTTP server, routes, handlers
-│       ├── blueprint/    # YAML config loaders
-│       ├── config/       # Runtime config cache + admin API
-│       ├── database/     # Migrator, query registry, connection
+│       ├── config/       # Runtime config cache (5-min TTL per org)
+│       ├── database/     # Migrator, query registry, connection pool
 │       ├── domain/       # Domain types and repository interfaces
 │       ├── rbac/         # Permission middleware
 │       ├── service/      # Business logic (auth, dispatch, workflow)
 │       ├── transport/    # SSE broker
 │       └── worker/       # Background workers (escalation)
-├── blueprints/           # IT-facing YAML seed files
-├── docs/                 # Architecture docs, ER diagrams, guides
-├── k8s/                  # Kubernetes manifests
+├── blueprints/           # IT-facing YAML seed files + schemas
+├── docs/                 # Architecture docs, ER diagram, guides
+├── k8s/                  # Kubernetes manifests (namespace: aethel-workspace)
 ├── aethel-scripts/       # Dev/ops shell scripts
 ├── docker-compose.yml    # Local dev stack
-└── Makefile              # All dev/build/test/deploy commands
+└── Makefile              # All dev/build/test/deploy commands (make help)
 ```
+
+---
+
+## Documentation
+
+| Document | Location |
+|---|---|
+| Architecture overview | `docs/architecture/` |
+| ER diagram | `docs/db-design.mmd` |
+| API routes | `docs/architecture/architecture-api-routes.md` |
+| Security architecture | `docs/architecture/architecture-security.md` |
+| IT customization guide | `docs/guides/it-customization-guide.md` |
+| Go developer guide | `docs/guides/go-developer-guide.md` |
+| DevOps tooling | `docs/devops/devops-tooling.md` |
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup instructions, branch conventions, and testing requirements. All PRs must pass `go test ./...` and `pnpm test` with CI green.
 
 ---
 
 ## License
 
-See [NOTICE](./NOTICE) and [LICENSE](./LICENSE) for terms.
+Apache 2.0. See [LICENSE](./LICENSE) and [NOTICE](./NOTICE) for terms.
