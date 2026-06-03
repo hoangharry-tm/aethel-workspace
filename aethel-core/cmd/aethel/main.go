@@ -7,6 +7,9 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"bufio"
+	"strings"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
@@ -21,6 +24,8 @@ import (
 	"aethel-core/internal/database/repos"
 	"aethel-core/internal/domain"
 	"aethel-core/internal/service"
+
+	"golang.org/x/term"
 )
 
 var rootCmd = &cobra.Command{
@@ -63,12 +68,34 @@ var migrateValidateCmd = &cobra.Command{
 	RunE:  runMigrateValidate,
 }
 
+var bootstrapAdminCmd = &cobra.Command{
+	Use:   "bootstrap-admin",
+	Short: "Create the initial SYS_ADMIN account",
+	RunE:  runBootstrapAdmin,
+}
+
 var migrateSteps int
 
 func init() {
-	migrateDownCmd.Flags().IntVar(&migrateSteps, "steps", 1, "number of migrations to roll back")
-	migrateCmd.AddCommand(migrateUpCmd, migrateDownCmd, migrateStatusCmd, migrateValidateCmd)
-	rootCmd.AddCommand(serveCmd, migrateCmd)
+	migrateDownCmd.Flags().IntVar(
+		&migrateSteps,
+		"steps",
+		1,
+		"number of migrations to roll back",
+	)
+
+	migrateCmd.AddCommand(
+		migrateUpCmd,
+		migrateDownCmd,
+		migrateStatusCmd,
+		migrateValidateCmd,
+	)
+
+	rootCmd.AddCommand(
+		serveCmd,
+		migrateCmd,
+		bootstrapAdminCmd,
+	)
 }
 
 func main() {
@@ -175,6 +202,105 @@ func runServe(cmd *cobra.Command, args []string) error {
 	srv := api.NewServer(db, queries, configCache, authHandler, dispatchHandler, workflowHandler, auditRepo, adminDeps)
 	slog.Info("starting server", "addr", addr)
 	return srv.ListenAndServe(addr)
+}
+
+// ── bootstrap-admin ─────────────────────────────────────────────────────────────────────
+func runBootstrapAdmin(_ *cobra.Command, _ []string) error {
+	ctx := context.Background()
+
+	// Load DB config.
+	_, envCfg, err := loadDatabaseBlueprint()
+	if err != nil {
+		return err
+	}
+
+	// Connect DB.
+	db, err := database.Open(envCfg)
+	if err != nil {
+		return fmt.Errorf("connect database: %w", err)
+	}
+	defer db.Close()
+
+	// Load org ID.
+	if err := app.LoadOrgID(ctx, db); err != nil {
+		return fmt.Errorf("load org id: %w", err)
+	}
+
+	// Build repos.
+	userRepo := repos.NewUserRepo(db)
+	sessionRepo := repos.NewSessionRepo(db)
+	pwResetRepo := repos.NewPasswordResetRepo(db)
+
+	// Build services.
+	auditRepo := &noopAuditRepo{}
+	authSvc := service.NewAuthService(
+		userRepo,
+		sessionRepo,
+		pwResetRepo,
+		auditRepo,
+	)
+
+	bootstrapSvc := service.NewBootstrapService(
+		userRepo,
+		authSvc,
+	)
+
+	reader := bufio.NewReader(os.Stdin)
+
+	// Email
+	fmt.Print("Email: ")
+	email, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	email = strings.TrimSpace(email)
+
+	// Full name
+	fmt.Print("Full name: ")
+	fullName, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	fullName = strings.TrimSpace(fullName)
+
+	// Password
+	fmt.Print("Password: ")
+	passwordBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		return err
+	}
+	fmt.Println()
+
+	password := strings.TrimSpace(string(passwordBytes))
+
+	// Confirm password
+	fmt.Print("Confirm password: ")
+	confirmBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		return err
+	}
+	fmt.Println()
+
+	confirmPassword := strings.TrimSpace(string(confirmBytes))
+
+	if password != confirmPassword {
+		return errors.New("passwords do not match")
+	}
+
+	err = bootstrapSvc.CreateInitialAdmin(
+		ctx,
+		app.OrgID,
+		email,
+		fullName,
+		password,
+	)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("✓ SYS_ADMIN account created successfully")
+
+	return nil
 }
 
 // ── migrate commands ──────────────────────────────────────────────────────────

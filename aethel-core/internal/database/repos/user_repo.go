@@ -170,3 +170,18 @@ func scanUserRow(rows *sql.Rows, u *domain.User) error {
 	}
 	return nil
 }
+
+func (r *UserRepo) AdminExists(ctx context.Context) (bool, error) {
+	const q = `
+	SELECT EXISTS (
+		SELECT 1
+		FROM users
+		WHERE role IN ('ADMIN', 'SYS_ADMIN')
+		AND is_active = true
+	)
+	`
+
+	var exists bool
+	err := r.db.QueryRowContext(ctx, q).Scan(&exists)
+	return exists, err
+}

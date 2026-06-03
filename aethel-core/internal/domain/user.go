@@ -68,6 +68,7 @@ type UserRepository interface {
 	ResetFailedLogins(ctx context.Context, userID uuid.UUID) error
 	LockUntil(ctx context.Context, userID uuid.UUID, until time.Time) error
 	SetLastLogin(ctx context.Context, userID uuid.UUID) error
+	AdminExists(ctx context.Context) (bool, error)
 }
 
 type SessionRepository interface {
