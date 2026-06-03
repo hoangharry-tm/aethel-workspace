@@ -72,7 +72,7 @@ func init() {
 }
 
 func main() {
-	_ = godotenv.Load()
+	_ = godotenv.Load("../.env")
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -241,7 +241,7 @@ func loadBlueprints() (*blueprint.DatabaseConfig, *blueprint.QueriesConfig, blue
 		return nil, nil, blueprint.EnvironmentConfig{}, err
 	}
 
-	queriesCfg, err := blueprint.LoadQueriesConfig("aethel-core/internal/database/queries/queries.yaml")
+	queriesCfg, err := blueprint.LoadQueriesConfig("./internal/database/queries/queries.yaml")
 	if err != nil {
 		return nil, nil, blueprint.EnvironmentConfig{}, fmt.Errorf("load queries blueprint: %w", err)
 	}

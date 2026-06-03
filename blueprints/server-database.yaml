@@ -55,7 +55,7 @@ environments:
       connection_max_lifetime_minutes: 15
       connection_max_idle_time_minutes: 5
     migrations:
-      directory: "./aethel-core/internal/database/migrations"
+      directory: "./internal/database/migrations"
       auto_run_on_startup: true
       table_name: "schema_migrations_history"
       lock_timeout_seconds: 60
