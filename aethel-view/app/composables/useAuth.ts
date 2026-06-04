@@ -15,6 +15,8 @@ export interface LoginCredentials {
 }
 
 export function useAuth() {
+  const { public: { apiBaseUrl } } = useRuntimeConfig()
+
   // In-memory access token. null = not authenticated.
   const accessToken = useState<string | null>('auth:access-token', () => null)
 
@@ -47,7 +49,7 @@ export function useAuth() {
 
   async function login(credentials: LoginCredentials): Promise<void> {
     const data = await $fetch<{ access_token: string; expires_in: number; role: string }>(
-      '/api/v1/auth/login',
+      `${apiBaseUrl}/api/v1/auth/login`,
       {
         method: 'POST',
         body: credentials,
@@ -58,7 +60,7 @@ export function useAuth() {
 
   async function logout(): Promise<void> {
     try {
-      await $fetch('/api/v1/auth/logout', {
+      await $fetch(`${apiBaseUrl}/api/v1/auth/logout`, {
         method: 'POST',
         headers: { 'X-CSRF-Token': getCSRFToken() },
       })
@@ -72,7 +74,7 @@ export function useAuth() {
   // Returns true on success, false if the session has expired.
   async function refresh(): Promise<boolean> {
     try {
-      const data = await $fetch<{ access_token: string }>('/api/v1/auth/refresh', {
+      const data = await $fetch<{ access_token: string }>(`${apiBaseUrl}/api/v1/auth/refresh`, {
         method: 'POST',
         headers: { 'X-CSRF-Token': getCSRFToken() },
         // The browser sends the refresh_token httpOnly cookie automatically.
@@ -94,7 +96,7 @@ export function useAuth() {
   }
 
   async function requestPasswordReset(email: string): Promise<void> {
-    await $fetch('/api/v1/auth/password-reset/request', {
+    await $fetch(`${apiBaseUrl}/api/v1/auth/password-reset/request`, {
       method: 'POST',
       body: { email },
     })

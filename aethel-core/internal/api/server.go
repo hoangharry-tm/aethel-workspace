@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"aethel-core/internal/api/docs"
 	"aethel-core/internal/api/handlers"
 	apiMW "aethel-core/internal/api/middleware"
 	"aethel-core/internal/app"
@@ -217,6 +218,11 @@ func (s *Server) buildRouter(
 			w.WriteHeader(http.StatusNoContent)
 		})
 	})
+
+	// API docs (Scalar UI + raw spec) — disabled by AETHEL_DISABLE_API_DOCS=true.
+	if docs.Enabled() {
+		r.Mount("/api/docs", docs.Handler())
+	}
 
 	return r
 }

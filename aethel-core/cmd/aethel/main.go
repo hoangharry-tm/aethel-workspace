@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"aethel-core/internal/api"
+	"aethel-core/internal/api/docs"
 	"aethel-core/internal/api/handlers"
 	"aethel-core/internal/app"
 	"aethel-core/internal/blueprint"
@@ -197,7 +198,10 @@ func runServe(cmd *cobra.Command, args []string) error {
 		EscRules:     escRepo,
 	}
 
-	// 10. Start HTTP server.
+	// 10. Validate OpenAPI spec at startup. Panics if the spec is malformed.
+	docs.ValidateSpec()
+
+	// 11. Start HTTP server.
 	addr := envAddr()
 	srv := api.NewServer(db, queries, configCache, authHandler, dispatchHandler, workflowHandler, auditRepo, adminDeps)
 	slog.Info("starting server", "addr", addr)

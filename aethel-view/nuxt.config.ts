@@ -9,6 +9,12 @@ export default defineNuxtConfig({
 
   components: [{ path: "~/components", pathPrefix: false }],
 
+  runtimeConfig: {
+    public: {
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:8080',
+    },
+  },
+
   modules: [
     "@nuxt/a11y",
     "@nuxt/eslint",
