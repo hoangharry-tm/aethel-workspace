@@ -31,7 +31,7 @@ func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	dsn := os.Getenv("AETHEL_DB_DSN")
 	if dsn == "" {
-		t.Skip("AETHEL_DB_DSN not set — skipping integration tests")
+		t.Skip("AETHEL_DB_DSN not set — skipping integration tests") // safe: logs absence, not value
 	}
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {

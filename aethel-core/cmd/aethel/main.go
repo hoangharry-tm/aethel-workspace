@@ -129,7 +129,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	// Log algorithm only — never log the key value or any secret env var content.
 	jwtSecret := os.Getenv("AETHEL_JWT_SECRET")
 	if jwtSecret == "" {
-		slog.Warn("AETHEL_JWT_SECRET not set — using insecure development default")
+		slog.Warn("AETHEL_JWT_SECRET not set — using insecure development default") // safe: logs absence, not value
 	} else {
 		slog.Info("JWT algorithm: HS256")
 	}
@@ -170,7 +170,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 		userRepo    domain.UserRepository          = repos.NewUserRepo(db)
 		sessionRepo domain.SessionRepository       = repos.NewSessionRepo(db)
 		pwResetRepo domain.PasswordResetRepository = repos.NewPasswordResetRepo(db)
-		auditRepo   domain.AuditRepository         = &noopAuditRepo{}
+		auditRepo   domain.AuditRepository         = repos.NewAuditRepo(db, queries)
 	)
 
 	// Sprint 3–4 placeholders.
@@ -236,7 +236,8 @@ func runBootstrapAdmin(_ *cobra.Command, _ []string) error {
 	pwResetRepo := repos.NewPasswordResetRepo(db)
 
 	// Build services.
-	auditRepo := &noopAuditRepo{}
+	// Bootstrap uses a write-only audit noop — no query registry is loaded in this path.
+	auditRepo := &bootstrapAuditRepo{}
 	authSvc := service.NewAuthService(
 		userRepo,
 		sessionRepo,
@@ -415,13 +416,15 @@ func envAddr() string {
 
 // ── stub repositories (replaced in Sprint 3–4) ───────────────────────────────
 
-type noopAuditRepo struct{}
+// bootstrapAuditRepo is a write-only no-op used by the bootstrap-admin command,
+// which does not load the query registry. The serve command uses repos.NewAuditRepo.
+type bootstrapAuditRepo struct{}
 
-func (r *noopAuditRepo) Write(_ context.Context, _ *domain.AuditEntry) error { return nil }
-func (r *noopAuditRepo) Query(_ context.Context, _ uuid.UUID, _, _ time.Time, _ domain.Page) ([]domain.AuditEntry, error) {
+func (r *bootstrapAuditRepo) Write(_ context.Context, _ *domain.AuditEntry) error { return nil }
+func (r *bootstrapAuditRepo) Query(_ context.Context, _ uuid.UUID, _, _ time.Time, _ domain.Page) ([]domain.AuditEntry, error) {
 	return nil, nil
 }
-func (r *noopAuditRepo) VerifyChain(_ context.Context, _ uuid.UUID, _, _ time.Time) (*domain.ChainVerificationResult, error) {
+func (r *bootstrapAuditRepo) VerifyChain(_ context.Context, _ uuid.UUID, _, _ time.Time) (*domain.ChainVerificationResult, error) {
 	return &domain.ChainVerificationResult{Valid: true}, nil
 }
 

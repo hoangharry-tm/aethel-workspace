@@ -1,0 +1,2283 @@
+openapi: "3.1.0"
+
+info:
+  title: Aethel Workspace API
+  version: "1.0.0"
+  description: |
+    REST API for Aethel Workspace — an open-source, self-hosted e-office platform
+    for institutional document workflows.
+
+    ## Authentication
+
+    All endpoints (except those marked **Public**) require a JWT access token:
+
+    ```
+    Authorization: Bearer <access_token>
+    ```
+
+    Obtain a token via `POST /api/v1/auth/login`. Tokens expire in **15 minutes**.
+    Use `POST /api/v1/auth/refresh` to renew silently using the `refresh_token` httpOnly cookie.
+
+    ## CSRF Protection
+
+    State-changing requests (`POST`, `PATCH`, `PUT`, `DELETE`) from browser clients must
+    include the CSRF token in a header:
+
+    ```
+    X-CSRF-Token: <value of the csrf_token cookie>
+    ```
+
+    The `csrf_token` cookie is set by the server on login. Non-browser clients (CLI, mobile)
+    that do not send cookies are exempt from this requirement.
+
+    ## Rate Limiting
+
+    - **Global:** 600 requests/min per IP (unauthenticated)
+    - **Per user:** 300 requests/min per authenticated user
+    - **Login endpoint:** 20 requests/min per IP (credential-stuffing protection)
+
+    Responses exceeding the limit receive `429 Too Many Requests` with a `Retry-After` header.
+
+    ## Error Format
+
+    All error responses use a consistent JSON envelope:
+    ```json
+    { "error": "human-readable description", "field": "fieldName (validation errors only)" }
+    ```
+
+  contact:
+    name: Aethel Workspace
+    url: https://github.com/hoangharry-tm/aethel-workspace
+
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development
+  - url: "{scheme}://{host}/api/v1"
+    description: Self-hosted deployment
+    variables:
+      scheme:
+        default: https
+        enum: [https, http]
+      host:
+        default: your-domain.example.com
+        description: Your server hostname
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Auth
+    description: |
+      Authentication and session management. Login, token refresh, logout,
+      and password reset flows.
+  - name: Config
+    description: |
+      Runtime configuration — branding, navigation structure, feature flags, and org profile.
+      Read endpoints are available to all authenticated users. Write endpoints require ADMIN.
+  - name: Dispatch
+    description: |
+      **Pillar 1 — DAK Diarization.** Inbound and outbound correspondence tracking.
+      Includes receipt, routing, assignment, delivery acknowledgement, and attachments.
+  - name: Workflow
+    description: |
+      **Pillar 2 — Green Noting Canvas.** Minute sheets and cryptographically-chained
+      green notes. Each note is immutable after insert; the chain is verified on every append.
+  - name: Governance
+    description: |
+      **Pillar 3 — RBAC Audit Ledger.** Append-only, monthly-partitioned, checksum-chained
+      event log. Requires `SYS_ADMIN` role. Includes tamper-detection verification endpoint.
+  - name: Admin
+    description: |
+      Administrative management — users, document types, routing rules, escalation rules,
+      reports, and system settings. Requires ADMIN role.
+  - name: Notifications
+    description: |
+      In-app notifications and real-time SSE stream. The SSE endpoint (`/notifications/stream`)
+      delivers events to connected browser clients within 2 seconds of the triggering action.
+  - name: System
+    description: Health and readiness probes. No authentication required.
+
+paths:
+  # ── Auth ──────────────────────────────────────────────────────────────────────
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: AuthLogin
+      summary: Log in and receive tokens
+      description: |
+        Authenticates the user with email and password.
+        On success, sets two cookies and returns the access token in the response body:
+        - `refresh_token` — httpOnly; JavaScript cannot read this
+        - `csrf_token` — readable; JavaScript must send this in `X-CSRF-Token` on subsequent requests
+
+        **Account lockout:** After 5 consecutive failures, the account is locked for 15 minutes.
+        The same `invalid credentials` error is returned regardless of whether the email exists
+        (prevents user enumeration).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+            example:
+              email: "marcus.webb@ministry.gov"
+              password: "S3cur3P@ssw0rd!"
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              description: Sets `refresh_token` (httpOnly) and `csrf_token` (readable) cookies
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, token_type, expires_in, role]
+                properties:
+                  access_token: { type: string }
+                  token_type: { type: string, enum: [Bearer] }
+                  expires_in: { type: integer, description: Seconds until expiry }
+                  role: { $ref: '#/components/schemas/UserRole' }
+              example:
+                access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4ZjNhMTJiYy0..."
+                token_type: Bearer
+                expires_in: 900
+                role: RECEPTION
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: Invalid email or password (same response whether email exists or not)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "invalid credentials" }
+        '423': { $ref: '#/components/responses/Locked' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: AuthRefresh
+      summary: Exchange refresh token for a new access token
+      description: |
+        Uses the `refresh_token` httpOnly cookie to issue a new access token and rotate
+        the refresh token. The old refresh token is invalidated (token rotation).
+        No request body required — the cookie is sent automatically by the browser.
+      security: []
+      responses:
+        '200':
+          description: New access token issued
+          headers:
+            Set-Cookie:
+              description: New `refresh_token` and `csrf_token` cookies
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, expires_in]
+                properties:
+                  access_token: { type: string }
+                  expires_in: { type: integer }
+              example:
+                access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                expires_in: 900
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: AuthLogout
+      summary: Revoke the current session
+      description: |
+        Invalidates the current refresh token and clears both cookies.
+        The access token remains valid until its natural expiry (15 min max).
+      responses:
+        '204':
+          description: Session revoked successfully
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/password-reset/request:
+    post:
+      tags: [Auth]
+      operationId: AuthPasswordResetRequest
+      summary: Request a password reset email
+      description: |
+        Sends a password reset link to the provided email address.
+        Always returns `202 Accepted` — does not reveal whether the email exists.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+            example:
+              email: "marcus.webb@ministry.gov"
+      responses:
+        '202':
+          description: Request accepted (email sent if account exists)
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /auth/password-reset/confirm:
+    post:
+      tags: [Auth]
+      operationId: AuthPasswordResetConfirm
+      summary: Apply a password reset token
+      description: |
+        Validates the one-time token and sets a new password.
+        Tokens expire after 1 hour and are single-use.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordResetConfirmRequest' }
+            example:
+              token: "abc123xyz..."
+              newPassword: "N3wS3cur3P@ss!"
+      responses:
+        '204':
+          description: Password reset successfully
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: Invalid or expired reset token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "invalid or expired token" }
+
+  # ── Config ────────────────────────────────────────────────────────────────────
+
+  /config:
+    get:
+      tags: [Config]
+      operationId: ConfigGet
+      summary: Get full runtime configuration
+      description: |
+        Returns the complete org configuration — branding, navigation, feature flags,
+        and org profile — from the in-memory config cache (5-min TTL).
+        This is the primary endpoint for the Nuxt SSR frontend on page load.
+      responses:
+        '200':
+          description: Full runtime configuration
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AppConfig' }
+              example:
+                branding:
+                  primaryColor: "#4f46e5"
+                  neutralPalette: "slate"
+                  fontFamily: "Inter"
+                  logoUrl: null
+                  wordmark: "Aethel Workspace"
+                nav:
+                  - label: "Reception"
+                    roles: [RECEPTION, ADMIN]
+                    items:
+                      - label: "Dashboard"
+                        icon: "i-lucide-layout-dashboard"
+                        to: "/dashboard"
+                        badge: null
+                features:
+                  greenNotingEnabled: false
+                  externalSmtpEnabled: false
+                  require2faForAdmin: false
+                org:
+                  name: "Ministry of Internal Affairs"
+                  timezone: "Asia/Ho_Chi_Minh"
+                  locale: "vi-VN"
+                  contactEmail: "admin@ministry.gov.vn"
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /config/branding:
+    get:
+      tags: [Config]
+      operationId: ConfigGetBranding
+      summary: Get branding configuration
+      description: Returns only the branding sub-object from the config cache.
+      responses:
+        '200':
+          description: Branding configuration
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BrandingConfig' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /config/nav:
+    get:
+      tags: [Config]
+      operationId: ConfigGetNav
+      summary: Get navigation structure
+      description: Returns the nav groups and items. Includes any runtime overrides stored in system_settings.
+      responses:
+        '200':
+          description: Navigation structure
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/NavGroup' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /config/features:
+    get:
+      tags: [Config]
+      operationId: ConfigGetFeatures
+      summary: Get feature flags
+      description: Returns the feature flags configuration object.
+      responses:
+        '200':
+          description: Feature flags
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeatureFlags' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /admin/config/branding:
+    patch:
+      tags: [Config]
+      operationId: AdminConfigPatchBranding
+      summary: Update branding configuration
+      description: |
+        Partially updates the branding configuration. All fields are optional.
+        Invalidates the config cache so the next read reflects the new values.
+        Requires ADMIN role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PatchBrandingRequest' }
+            example:
+              primaryColor: "#0ea5e9"
+              wordmark: "Ministry E-Office"
+      responses:
+        '200':
+          description: Updated branding configuration
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BrandingConfig' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/config/nav:
+    patch:
+      tags: [Config]
+      operationId: AdminConfigPatchNav
+      summary: Update navigation structure
+      description: |
+        Replaces the runtime nav override stored in system_settings.
+        The full nav array must be provided. Invalidates the config cache.
+        Requires ADMIN role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PatchNavRequest' }
+      responses:
+        '200':
+          description: Updated navigation structure
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/NavGroup' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/config/features:
+    patch:
+      tags: [Config]
+      operationId: AdminConfigPatchFeatures
+      summary: Update feature flags
+      description: |
+        Partially updates feature flags. All fields are optional booleans.
+        Invalidates the config cache. Requires ADMIN role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PatchFeaturesRequest' }
+            example:
+              greenNotingEnabled: true
+      responses:
+        '200':
+          description: Updated feature flags
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeatureFlags' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/config/org:
+    patch:
+      tags: [Config]
+      operationId: AdminConfigPatchOrg
+      summary: Update org profile
+      description: |
+        Partially updates the organization profile. All fields are optional.
+        Requires ADMIN role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PatchOrgRequest' }
+            example:
+              name: "Ministry of Internal Affairs"
+              timezone: "Asia/Ho_Chi_Minh"
+      responses:
+        '200':
+          description: Updated org profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgProfile' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ── Dispatch ──────────────────────────────────────────────────────────────────
+
+  /dispatches:
+    get:
+      tags: [Dispatch]
+      operationId: DispatchListInbox
+      summary: List inbound dispatch queue
+      description: Returns the active inbound queue for the current user's department. Paginated.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Paginated list of inbound dispatches
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/DispatchSummary' }
+              example:
+                data:
+                  - id: "8f3a12bc-1234-5678-abcd-000000000001"
+                    trackingNumber: "INB-2026-001234"
+                    direction: INBOUND
+                    senderName: "Tax Authority"
+                    priorityLevel: PRIORITY
+                    statusState: UNDER_REVIEW
+                    createdAt: "2026-06-01T08:00:00Z"
+                total: 42
+                page: 1
+                pageSize: 20
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Dispatch]
+      operationId: DispatchCreate
+      summary: Log a new inbound dispatch
+      description: Creates a new inbound dispatch record. Triggers automatic routing rule evaluation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDispatchRequest' }
+      responses:
+        '201':
+          description: Dispatch created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dispatch' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /dispatches/outbound:
+    get:
+      tags: [Dispatch]
+      operationId: DispatchListOutbound
+      summary: List outbound dispatch queue
+      description: Returns the outbound queue for the current organization. Paginated.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Paginated list of outbound dispatches
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/DispatchSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Dispatch]
+      operationId: DispatchCreateOutbound
+      summary: Log a new outbound dispatch
+      description: Creates a new outbound dispatch record.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDispatchRequest' }
+      responses:
+        '201':
+          description: Outbound dispatch created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dispatch' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /my-dispatches:
+    get:
+      tags: [Dispatch]
+      operationId: DispatchListMine
+      summary: List dispatches assigned to me
+      description: Returns all dispatches currently assigned to the authenticated user.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Paginated list of the user's assigned dispatches
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/DispatchSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /search:
+    get:
+      tags: [Dispatch]
+      operationId: DispatchSearch
+      summary: Full-text search across dispatches
+      description: |
+        Searches dispatch records by tracking number, sender name, subject line, or document type.
+        Uses PostgreSQL full-text search (pg_trgm).
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2 }
+          description: Search query string
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/DispatchSummary' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /dispatches/{id}:
+    get:
+      tags: [Dispatch]
+      operationId: DispatchGetByID
+      summary: Get dispatch detail
+      description: Returns the full dispatch record including the event timeline.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Full dispatch detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dispatch' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /dispatches/{id}/status:
+    patch:
+      tags: [Dispatch]
+      operationId: DispatchUpdateStatus
+      summary: Update dispatch status
+      description: Transitions the dispatch to a new status state. Logs a dispatch event.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/DispatchStatus' }
+            example:
+              status: IN_TRANSIT
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dispatch' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /dispatches/{id}/assign:
+    post:
+      tags: [Dispatch]
+      operationId: DispatchAssign
+      summary: Assign dispatch to a user or department
+      description: |
+        Manually assigns the dispatch to a specific user or department.
+        Sets `isManuallyRouted = true`, bypassing the automatic routing rules.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignDispatchRequest' }
+            example:
+              userId: "8f3a12bc-1234-5678-abcd-000000000042"
+              isManualOverride: true
+      responses:
+        '200':
+          description: Dispatch assigned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dispatch' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /dispatches/{id}/acknowledge:
+    post:
+      tags: [Dispatch]
+      operationId: DispatchAcknowledge
+      summary: Record receipt acknowledgement
+      description: |
+        Records that the recipient has acknowledged receipt of the dispatch.
+        Sets `acknowledgedAt` and `acknowledgedByUserId` on the dispatch record.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Acknowledgement recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dispatch' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /dispatches/{id}/attachments:
+    get:
+      tags: [Dispatch]
+      operationId: DispatchListAttachments
+      summary: List file attachments
+      description: Returns all file attachments associated with the dispatch.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: List of attachments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Attachment' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+    post:
+      tags: [Dispatch]
+      operationId: DispatchUploadAttachment
+      summary: Upload a file attachment
+      description: Uploads a file and attaches it to the dispatch. Supports multipart/form-data.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to upload
+                description:
+                  type: string
+                  description: Optional description of the attachment
+      responses:
+        '201':
+          description: Attachment uploaded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attachment' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /dispatches/{id}/attachments/{att_id}:
+    delete:
+      tags: [Dispatch]
+      operationId: DispatchDeleteAttachment
+      summary: Remove a file attachment
+      description: Permanently deletes the specified attachment from the dispatch.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+        - $ref: '#/components/parameters/AttachmentID'
+      responses:
+        '204':
+          description: Attachment deleted
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ── Workflow ──────────────────────────────────────────────────────────────────
+
+  /dispatches/{id}/minute-sheet:
+    get:
+      tags: [Workflow]
+      operationId: WorkflowGetMinuteSheet
+      summary: Get minute sheet and green note timeline
+      description: |
+        Returns the minute sheet for the dispatch along with the full ordered list
+        of green notes. Use this as the primary view for the Green Noting Canvas.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Minute sheet with embedded green notes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MinuteSheet' }
+              example:
+                id: "ms-uuid-0001"
+                organizationId: "org-uuid-0001"
+                dispatchId: "dispatch-uuid-0001"
+                status: OPEN
+                approvedById: null
+                approvedAt: null
+                createdAt: "2026-06-01T08:00:00Z"
+                updatedAt: "2026-06-01T10:00:00Z"
+                notes: []
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /dispatches/{id}/green-notes:
+    get:
+      tags: [Workflow]
+      operationId: WorkflowListGreenNotes
+      summary: List green notes in sequence order
+      description: Returns all green notes for the dispatch's minute sheet, ordered by sequenceOrder ascending.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Ordered list of green notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/GreenNote' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+    post:
+      tags: [Workflow]
+      operationId: WorkflowGreenNoteAppend
+      summary: Append a green note to a minute sheet
+      description: |
+        Appends a new green note to the dispatch's minute sheet.
+
+        **Hash chain enforcement:** The `previousHash` field must equal the
+        `cryptographicHash` of the most recent note in the sheet. If it does not match,
+        the server rejects the request with `409 Conflict` — this indicates either a
+        concurrent write race or an attempt to tamper with the chain.
+
+        Notes are **immutable after insert**. There is no update or delete endpoint.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AppendGreenNoteRequest' }
+            example:
+              contentBody: "Document reviewed. No issues found. Forwarding to department head for approval."
+              previousHash: "a3f8c2d1e5b6f7a8..."
+      responses:
+        '201':
+          description: Green note appended successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GreenNote' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Hash chain mismatch — previousHash does not match the last note
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "hash chain broken: previousHash does not match last note" }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /dispatches/{id}/minute-sheet/approve:
+    post:
+      tags: [Workflow]
+      operationId: WorkflowApproveMinuteSheet
+      summary: Approve the minute sheet
+      description: |
+        Marks the minute sheet as approved. Sets `approvedById` and `approvedAt`.
+        Once approved, the minute sheet is closed — no further green notes can be appended.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Minute sheet approved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MinuteSheet' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Minute sheet is already approved or rejected
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "minute sheet is already approved" }
+
+  # ── Governance ────────────────────────────────────────────────────────────────
+
+  /audit-log:
+    get:
+      tags: [Governance]
+      operationId: GovernanceQueryAuditLog
+      summary: Query the audit ledger
+      description: |
+        Returns audit log entries filtered by date range. Results are paginated and ordered
+        by `createdAt` descending. Requires `SYS_ADMIN` role.
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: eventType
+          in: query
+          schema: { $ref: '#/components/schemas/AuditEventType' }
+          description: Filter by specific event type
+      responses:
+        '200':
+          description: Paginated audit entries
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/AuditEntry' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /audit-log/verify:
+    get:
+      tags: [Governance]
+      operationId: GovernanceVerifyChain
+      summary: Verify the checksum chain
+      description: |
+        Walks all audit log entries in the specified date range and verifies that each
+        row's `previousChecksum` matches the checksum of the preceding row.
+        Returns a detailed result including any broken links found.
+        Requires `SYS_ADMIN` role.
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Chain verification result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChainVerificationResult' }
+              example:
+                valid: true
+                totalRows: 1482
+                brokenAt: []
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ── Admin — Users ─────────────────────────────────────────────────────────────
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      operationId: AdminUserList
+      summary: List all users
+      description: Returns all user accounts in the organization. Requires ADMIN role.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/UserSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Admin]
+      operationId: AdminUserCreate
+      summary: Create a new user account
+      description: Creates a new user. The user's initial password is set via the request body. Requires ADMIN role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUserRequest' }
+            example:
+              email: "priya.sharma@ministry.gov"
+              fullName: "Priya Sharma"
+              role: USER
+              departmentId: "dept-uuid-0001"
+              password: "T3mp@Pass123!"
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /admin/users/{id}:
+    get:
+      tags: [Admin]
+      operationId: AdminUserGet
+      summary: Get user detail
+      description: Returns the full user record. Requires ADMIN role.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: User detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      tags: [Admin]
+      operationId: AdminUserUpdate
+      summary: Update user profile or role
+      description: Partially updates a user. All fields are optional. Requires ADMIN role.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName: { type: string }
+                role: { $ref: '#/components/schemas/UserRole' }
+                departmentId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                jobTitle:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+    delete:
+      tags: [Admin]
+      operationId: AdminUserDeactivate
+      summary: Deactivate a user account
+      description: |
+        Sets `isActive = false`. The user can no longer log in.
+        Existing sessions are revoked. This is a soft delete — the user record is preserved
+        for audit trail integrity. Requires ADMIN role.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204':
+          description: User deactivated
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ── Admin — Document Types ─────────────────────────────────────────────────────
+
+  /admin/document-types:
+    get:
+      tags: [Admin]
+      operationId: AdminDocumentTypeList
+      summary: List document type catalogue
+      description: Returns all document types for the organization. Requires ADMIN role.
+      responses:
+        '200':
+          description: Document type list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DocumentType' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Admin]
+      operationId: AdminDocumentTypeCreate
+      summary: Create a document type
+      description: Adds a new document type to the catalogue. Requires ADMIN role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, code]
+              properties:
+                name: { type: string }
+                code: { type: string }
+                description: { type: string, nullable: true }
+                isActive: { type: boolean, default: true }
+            example:
+              name: "Official Letter"
+              code: "OL"
+              description: "Formal correspondence between government entities"
+              isActive: true
+      responses:
+        '201':
+          description: Document type created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentType' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/document-types/{id}:
+    patch:
+      tags: [Admin]
+      operationId: AdminDocumentTypeUpdate
+      summary: Update a document type
+      description: Partially updates a document type. Requires ADMIN role.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string, nullable: true }
+                isActive: { type: boolean }
+      responses:
+        '200':
+          description: Updated document type
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentType' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+    delete:
+      tags: [Admin]
+      operationId: AdminDocumentTypeDelete
+      summary: Delete a document type
+      description: Removes a document type. Fails if dispatches reference it. Requires ADMIN role.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204':
+          description: Document type deleted
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Document type is referenced by existing dispatches
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "document type is in use and cannot be deleted" }
+
+  # ── Admin — Routing Rules ──────────────────────────────────────────────────────
+
+  /admin/routing-rules:
+    get:
+      tags: [Admin]
+      operationId: AdminRoutingRuleList
+      summary: List routing rules in priority order
+      description: Returns all routing rules ordered by priorityOrder ascending. Requires ADMIN role.
+      responses:
+        '200':
+          description: Routing rules list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RoutingRule' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Admin]
+      operationId: AdminRoutingRuleCreate
+      summary: Create a routing rule
+      description: Creates a new routing rule with conditions and destinations. Requires ADMIN role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRoutingRuleRequest' }
+      responses:
+        '201':
+          description: Routing rule created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutingRule' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/routing-rules/{id}:
+    put:
+      tags: [Admin]
+      operationId: AdminRoutingRuleUpdate
+      summary: Update a routing rule
+      description: Replaces the routing rule (full update including conditions and destinations). Requires ADMIN role.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRoutingRuleRequest' }
+      responses:
+        '200':
+          description: Updated routing rule
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutingRule' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+    delete:
+      tags: [Admin]
+      operationId: AdminRoutingRuleDelete
+      summary: Delete a routing rule
+      description: Removes the routing rule. Requires ADMIN role.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204':
+          description: Routing rule deleted
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ── Admin — Escalation Rules ───────────────────────────────────────────────────
+
+  /admin/escalation-rules:
+    get:
+      tags: [Admin]
+      operationId: AdminEscalationRuleList
+      summary: List escalation rules
+      description: Returns all escalation rules for the organization. Requires ADMIN role.
+      responses:
+        '200':
+          description: Escalation rules list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EscalationRule' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Admin]
+      operationId: AdminEscalationRuleCreate
+      summary: Create an escalation rule
+      description: Creates a new escalation rule. Requires ADMIN role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEscalationRuleRequest' }
+      responses:
+        '201':
+          description: Escalation rule created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EscalationRule' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/escalation-rules/{id}:
+    put:
+      tags: [Admin]
+      operationId: AdminEscalationRuleUpdate
+      summary: Update an escalation rule
+      description: Replaces the escalation rule (full update). Requires ADMIN role.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEscalationRuleRequest' }
+      responses:
+        '200':
+          description: Updated escalation rule
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EscalationRule' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ── Admin — Reports, Settings, Branding ───────────────────────────────────────
+
+  /admin/reports:
+    get:
+      tags: [Admin]
+      operationId: AdminGetReports
+      summary: Get aggregated dispatch statistics
+      description: |
+        Returns summary statistics for dispatch volume, status distribution, and processing times.
+        Accepts optional date range filters. Requires ADMIN role.
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Report statistics
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/settings:
+    get:
+      tags: [Admin]
+      operationId: AdminGetSettings
+      summary: Read system settings
+      description: Returns all key-value pairs from the system_settings table. Requires ADMIN role.
+      responses:
+        '200':
+          description: System settings
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+              example:
+                nav_config: "[{...}]"
+                maintenance_mode: "false"
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+    patch:
+      tags: [Admin]
+      operationId: AdminUpdateSettings
+      summary: Update system settings
+      description: Merges the provided key-value pairs into the system_settings table. Requires ADMIN role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/branding:
+    get:
+      tags: [Admin]
+      operationId: AdminGetBranding
+      summary: Read branding configuration
+      description: Returns the current branding configuration. Requires ADMIN role.
+      responses:
+        '200':
+          description: Branding configuration
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BrandingConfig' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+    put:
+      tags: [Admin]
+      operationId: AdminUpdateBranding
+      summary: Update branding configuration
+      description: Replaces the branding configuration (full update). Requires ADMIN role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BrandingConfig' }
+      responses:
+        '200':
+          description: Updated branding configuration
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BrandingConfig' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ── Notifications ─────────────────────────────────────────────────────────────
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      operationId: NotificationsList
+      summary: List recent notifications
+      description: Returns recent in-app notifications for the authenticated user.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Notification list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Notification' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      operationId: NotificationsMarkRead
+      summary: Mark a notification as read
+      description: Sets the notification's read status to true.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204':
+          description: Notification marked as read
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /notifications/stream:
+    get:
+      tags: [Notifications]
+      operationId: NotificationsStream
+      summary: Real-time notification stream (SSE)
+      description: |
+        Server-Sent Events stream. Keep-alive connection; the server pushes events as
+        they occur. Reconnects automatically in the browser.
+
+        **Event format:**
+        ```
+        event: notification
+        data: {"id":"...","type":"DOCUMENT_ARRIVAL","title":"...","dispatchId":"..."}
+        ```
+
+        The connection is closed by the server if the user's session expires.
+      responses:
+        '200':
+          description: SSE stream opened
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Newline-delimited SSE events
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ── System ────────────────────────────────────────────────────────────────────
+
+  /healthz:
+    get:
+      tags: [System]
+      operationId: SystemHealthz
+      summary: Liveness probe
+      description: Returns 200 if the server process is running. No dependency checks.
+      security: []
+      responses:
+        '200':
+          description: Server is alive
+          content:
+            text/plain:
+              schema: { type: string }
+              example: "ok"
+
+  /readyz:
+    get:
+      tags: [System]
+      operationId: SystemReadyz
+      summary: Readiness probe
+      description: Returns 200 if the server is ready to serve traffic (database reachable).
+      security: []
+      responses:
+        '200':
+          description: Server is ready
+          content:
+            text/plain:
+              schema: { type: string }
+              example: "ready"
+        '503':
+          description: Server not ready (database unreachable)
+          content:
+            text/plain:
+              schema: { type: string }
+              example: "db not ready"
+
+# ── Components ────────────────────────────────────────────────────────────────
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token from `POST /api/v1/auth/login`.
+        Claims: `sub` (user UUID), `role`, `iat`, `exp`, `jti`.
+        Expiry: 15 minutes. Use the refresh endpoint to renew.
+
+  parameters:
+    ResourceID:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AttachmentID:
+      name: att_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PageParam:
+      name: page
+      in: query
+      schema: { type: integer, default: 1, minimum: 1 }
+    PageSizeParam:
+      name: pageSize
+      in: query
+      schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+    DateFrom:
+      name: from
+      in: query
+      schema: { type: string, format: date }
+      description: Start of date range (inclusive), ISO 8601 date
+    DateTo:
+      name: to
+      in: query
+      schema: { type: string, format: date }
+      description: End of date range (exclusive), ISO 8601 date
+
+  responses:
+    BadRequest:
+      description: Bad request — invalid JSON or missing required field
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "invalid request body" }
+    Unauthorized:
+      description: Missing or invalid access token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "unauthorized" }
+    Forbidden:
+      description: Authenticated but insufficient role or permission
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "forbidden" }
+    Locked:
+      description: Account temporarily locked due to too many failed login attempts
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "account temporarily locked due to too many failed attempts" }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "not found" }
+    UnprocessableEntity:
+      description: Validation error — request is well-formed but semantically invalid
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationError' }
+          example: { error: "email is not a valid email address", field: "email" }
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "rate limit exceeded" }
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "internal server error" }
+
+  schemas:
+    # ── Errors ────────────────────────────────────────────────────────────────
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    ValidationError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        field: { type: string }
+
+    # ── Enumerations ──────────────────────────────────────────────────────────
+
+    UserRole:
+      type: string
+      enum: [ADMIN, RECEPTION, USER, SYS_ADMIN]
+
+    PriorityLevel:
+      type: string
+      enum: [ROUTINE, PRIORITY, IMMEDIATE]
+
+    DispatchStatus:
+      type: string
+      enum: [PENDING_ASSIGNMENT, UNDER_REVIEW, IN_TRANSIT, ATTEMPTED_DELIVERY, DELIVERED, ESCALATED, DISPATCHED, REJECTED]
+
+    DispatchDirection:
+      type: string
+      enum: [INBOUND, OUTBOUND]
+
+    MatchOperator:
+      type: string
+      enum: [EQUALS, CONTAINS, STARTS_WITH, REGEX]
+
+    ConditionType:
+      type: string
+      enum: [DOCUMENT_TYPE, SENDER_NAME, SENDER_ORG, URGENCY_LEVEL]
+
+    NotificationType:
+      type: string
+      enum: [DOCUMENT_ARRIVAL, REMINDER, ESCALATION, SYSTEM]
+
+    AuditEventType:
+      type: string
+      enum:
+        - USER_LOGIN
+        - USER_LOGIN_FAILED
+        - USER_LOGOUT
+        - SESSION_REVOKED
+        - PERMISSION_DENIED
+        - RBAC_ELEVATION_ATTEMPT
+        - SECURITY_BREACH_ATTEMPT
+        - UNAUTHORIZED_ACCESS_BYPASSED
+        - DISPATCH_CREATED
+        - DISPATCH_ASSIGNED
+        - DISPATCH_DELIVERED
+        - GREEN_NOTE_APPENDED
+        - ADMIN_USER_CREATED
+        - ADMIN_USER_DEACTIVATED
+        - ADMIN_SETTINGS_CHANGED
+        - ROUTING_RULE_MODIFIED
+
+    MinuteSheetStatus:
+      type: string
+      enum: [OPEN, APPROVED, REJECTED]
+
+    # ── Pagination ────────────────────────────────────────────────────────────
+
+    PaginatedResponse:
+      type: object
+      required: [data, total, page, pageSize]
+      properties:
+        data:
+          type: array
+          items: {}
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+
+    # ── Domain Objects ────────────────────────────────────────────────────────
+
+    User:
+      type: object
+      required: [id, organizationId, emailAddress, fullName, role, isActive, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        departmentId:
+          type: string
+          format: uuid
+          nullable: true
+        emailAddress: { type: string, format: email }
+        fullName: { type: string }
+        jobTitle:
+          type: string
+          nullable: true
+        role: { $ref: '#/components/schemas/UserRole' }
+        isActive: { type: boolean }
+        lastLoginAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    UserSummary:
+      type: object
+      required: [id, fullName, emailAddress, role]
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+        emailAddress: { type: string, format: email }
+        role: { $ref: '#/components/schemas/UserRole' }
+        departmentId:
+          type: string
+          format: uuid
+          nullable: true
+
+    Dispatch:
+      type: object
+      required: [id, organizationId, trackingNumber, direction, documentTypeId, senderName, submittedByUserId, priorityLevel, statusState, isManuallyRouted, isEscalated, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        trackingNumber: { type: string }
+        direction: { $ref: '#/components/schemas/DispatchDirection' }
+        documentTypeId: { type: string, format: uuid }
+        senderName: { type: string }
+        senderOrganization:
+          type: string
+          nullable: true
+        recipientName:
+          type: string
+          nullable: true
+        recipientOrganization:
+          type: string
+          nullable: true
+        recipientAddress:
+          type: string
+          nullable: true
+        assignedUserId:
+          type: string
+          format: uuid
+          nullable: true
+        assignedDepartmentId:
+          type: string
+          format: uuid
+          nullable: true
+        submittedByUserId: { type: string, format: uuid }
+        priorityLevel: { $ref: '#/components/schemas/PriorityLevel' }
+        statusState: { $ref: '#/components/schemas/DispatchStatus' }
+        subjectLine:
+          type: string
+          nullable: true
+        deliveryMode:
+          type: string
+          nullable: true
+        isManuallyRouted: { type: boolean }
+        originalSuggestedUserId:
+          type: string
+          format: uuid
+          nullable: true
+        overdueAt:
+          type: string
+          format: date-time
+          nullable: true
+        acknowledgedAt:
+          type: string
+          format: date-time
+          nullable: true
+        acknowledgedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        isEscalated: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    DispatchSummary:
+      type: object
+      required: [id, trackingNumber, direction, senderName, priorityLevel, statusState, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        trackingNumber: { type: string }
+        direction: { $ref: '#/components/schemas/DispatchDirection' }
+        senderName: { type: string }
+        priorityLevel: { $ref: '#/components/schemas/PriorityLevel' }
+        statusState: { $ref: '#/components/schemas/DispatchStatus' }
+        createdAt: { type: string, format: date-time }
+
+    DispatchEvent:
+      type: object
+      required: [id, organizationId, dispatchId, eventType, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        dispatchId: { type: string, format: uuid }
+        eventType: { type: string }
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+        fromUserId:
+          type: string
+          format: uuid
+          nullable: true
+        toUserId:
+          type: string
+          format: uuid
+          nullable: true
+        fromDeptId:
+          type: string
+          format: uuid
+          nullable: true
+        toDeptId:
+          type: string
+          format: uuid
+          nullable: true
+        metadata:
+          type: string
+          nullable: true
+        createdAt: { type: string, format: date-time }
+
+    DocumentType:
+      type: object
+      required: [id, organizationId, name, code, isActive, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        name: { type: string }
+        code: { type: string }
+        description:
+          type: string
+          nullable: true
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    MinuteSheet:
+      type: object
+      required: [id, organizationId, dispatchId, status, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        dispatchId: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/MinuteSheetStatus' }
+        approvedById:
+          type: string
+          format: uuid
+          nullable: true
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        notes:
+          type: array
+          items: { $ref: '#/components/schemas/GreenNote' }
+
+    GreenNote:
+      type: object
+      required: [id, organizationId, minuteSheetId, authorOfficerId, sequenceOrder, contentBody, cryptographicHash, previousHash, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        minuteSheetId: { type: string, format: uuid }
+        authorOfficerId: { type: string, format: uuid }
+        sequenceOrder: { type: integer }
+        contentBody: { type: string }
+        cryptographicHash: { type: string, description: SHA-256 hash of contentBody + sequenceOrder + authorOfficerId }
+        previousHash: { type: string, description: cryptographicHash of the preceding note (empty string for the first note) }
+        digitalSignature:
+          type: string
+          nullable: true
+        createdAt: { type: string, format: date-time }
+
+    AuditEntry:
+      type: object
+      required: [id, organizationId, actionEventType, previousChecksum, checksum, createdAt]
+      properties:
+        id: { type: integer, format: int64 }
+        organizationId: { type: string, format: uuid }
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+        actionEventType: { $ref: '#/components/schemas/AuditEventType' }
+        targetResourceId:
+          type: string
+          format: uuid
+          nullable: true
+        targetTable:
+          type: string
+          nullable: true
+        ipAddress:
+          type: string
+          nullable: true
+        userAgent:
+          type: string
+          nullable: true
+        metadata:
+          type: string
+          nullable: true
+        previousChecksum: { type: string }
+        checksum: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    RoutingRule:
+      type: object
+      required: [id, organizationId, name, priorityOrder, isActive, conditions, destinations, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        name: { type: string }
+        priorityOrder: { type: integer }
+        isActive: { type: boolean }
+        conditions:
+          type: array
+          items: { $ref: '#/components/schemas/RoutingRuleCondition' }
+        destinations:
+          type: array
+          items: { $ref: '#/components/schemas/RoutingRuleDestination' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    RoutingRuleCondition:
+      type: object
+      required: [id, routingRuleId, fieldName, operator, matchValue]
+      properties:
+        id: { type: string, format: uuid }
+        routingRuleId: { type: string, format: uuid }
+        fieldName: { type: string }
+        operator: { type: string }
+        matchValue: { type: string }
+
+    RoutingRuleDestination:
+      type: object
+      required: [id, routingRuleId, priorityOffset]
+      properties:
+        id: { type: string, format: uuid }
+        routingRuleId: { type: string, format: uuid }
+        departmentId:
+          type: string
+          format: uuid
+          nullable: true
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+        priorityOffset: { type: integer }
+
+    EscalationRule:
+      type: object
+      required: [id, organizationId, name, escalateAfterHours, isActive, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        name: { type: string }
+        documentTypeId:
+          type: string
+          format: uuid
+          nullable: true
+        priorityLevel:
+          type: string
+          nullable: true
+        escalateAfterHours: { type: integer }
+        notifyUserId:
+          type: string
+          format: uuid
+          nullable: true
+        notifyDepartmentId:
+          type: string
+          format: uuid
+          nullable: true
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    Notification:
+      type: object
+      required: [id, type, title, isRead, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: '#/components/schemas/NotificationType' }
+        title: { type: string }
+        body:
+          type: string
+          nullable: true
+        dispatchId:
+          type: string
+          format: uuid
+          nullable: true
+        isRead: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    Attachment:
+      type: object
+      required: [id, dispatchId, fileName, fileSize, mimeType, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        dispatchId: { type: string, format: uuid }
+        fileName: { type: string }
+        fileSize: { type: integer, description: File size in bytes }
+        mimeType: { type: string }
+        description:
+          type: string
+          nullable: true
+        uploadedByUserId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+
+    AppConfig:
+      type: object
+      required: [branding, nav, features, org]
+      properties:
+        branding: { $ref: '#/components/schemas/BrandingConfig' }
+        nav:
+          type: array
+          items: { $ref: '#/components/schemas/NavGroup' }
+        features: { $ref: '#/components/schemas/FeatureFlags' }
+        org: { $ref: '#/components/schemas/OrgProfile' }
+
+    BrandingConfig:
+      type: object
+      required: [primaryColor, neutralPalette, fontFamily, wordmark]
+      properties:
+        primaryColor: { type: string, description: 'CSS hex color, e.g. "#4f46e5"' }
+        neutralPalette: { type: string, description: 'Tailwind palette name, e.g. "slate"' }
+        fontFamily: { type: string, description: 'Font family name, e.g. "Inter"' }
+        logoUrl:
+          type: string
+          nullable: true
+          description: URL to the organization logo image
+        wordmark: { type: string, description: Text wordmark displayed in the sidebar }
+
+    NavGroup:
+      type: object
+      required: [label, roles, items]
+      properties:
+        label: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/NavItem' }
+
+    NavItem:
+      type: object
+      required: [label, icon, to]
+      properties:
+        label: { type: string }
+        icon: { type: string, description: 'Iconify icon name, e.g. "i-lucide-inbox"' }
+        to: { type: string, description: Route path or URL }
+        badge:
+          type: integer
+          nullable: true
+
+    FeatureFlags:
+      type: object
+      required: [greenNotingEnabled, externalSmtpEnabled, require2faForAdmin]
+      properties:
+        greenNotingEnabled: { type: boolean }
+        externalSmtpEnabled: { type: boolean }
+        require2faForAdmin: { type: boolean }
+
+    OrgProfile:
+      type: object
+      required: [name, timezone, locale, contactEmail]
+      properties:
+        name: { type: string }
+        timezone: { type: string, description: 'IANA timezone string, e.g. "Asia/Ho_Chi_Minh"' }
+        locale: { type: string, description: 'BCP 47 locale tag, e.g. "vi-VN"' }
+        contactEmail: { type: string, format: email }
+
+    ChainVerificationResult:
+      type: object
+      required: [valid, totalRows]
+      properties:
+        valid: { type: boolean }
+        totalRows: { type: integer }
+        brokenAt:
+          type: array
+          items: { $ref: '#/components/schemas/BrokenLink' }
+
+    BrokenLink:
+      type: object
+      required: [entryId, computedChecksum, storedChecksum, createdAt]
+      properties:
+        entryId: { type: integer, format: int64 }
+        computedChecksum: { type: string }
+        storedChecksum: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    ReportSummary:
+      type: object
+      required: [totalDispatches, byStatus, byPriority]
+      properties:
+        totalDispatches: { type: integer }
+        byStatus:
+          type: object
+          additionalProperties: { type: integer }
+        byPriority:
+          type: object
+          additionalProperties: { type: integer }
+        avgProcessingHours:
+          type: number
+          format: float
+          nullable: true
+
+    # ── Request Bodies ────────────────────────────────────────────────────────
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+
+    PasswordResetConfirmRequest:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token: { type: string }
+        newPassword: { type: string, minLength: 8 }
+
+    CreateDispatchRequest:
+      type: object
+      required: [direction, documentTypeId, senderName, priorityLevel]
+      properties:
+        direction: { $ref: '#/components/schemas/DispatchDirection' }
+        documentTypeId: { type: string, format: uuid }
+        senderName: { type: string }
+        senderOrganization: { type: string, nullable: true }
+        recipientName: { type: string, nullable: true }
+        recipientOrganization: { type: string, nullable: true }
+        recipientAddress: { type: string, nullable: true }
+        priorityLevel: { $ref: '#/components/schemas/PriorityLevel' }
+        subjectLine: { type: string, nullable: true }
+        deliveryMode: { type: string, nullable: true }
+
+    AssignDispatchRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+        departmentId:
+          type: string
+          format: uuid
+          nullable: true
+        isManualOverride: { type: boolean, default: false }
+
+    AppendGreenNoteRequest:
+      type: object
+      required: [contentBody, previousHash]
+      properties:
+        contentBody: { type: string, minLength: 1 }
+        previousHash: { type: string, description: cryptographicHash of the last note; empty string for the first note }
+
+    CreateUserRequest:
+      type: object
+      required: [email, fullName, role, password]
+      properties:
+        email: { type: string, format: email }
+        fullName: { type: string }
+        role: { $ref: '#/components/schemas/UserRole' }
+        departmentId:
+          type: string
+          format: uuid
+          nullable: true
+        password: { type: string, minLength: 8 }
+
+    PatchBrandingRequest:
+      type: object
+      properties:
+        primaryColor: { type: string }
+        neutralPalette: { type: string }
+        fontFamily: { type: string }
+        wordmark: { type: string }
+        logoUrl: { type: string, nullable: true }
+
+    PatchNavRequest:
+      type: object
+      required: [nav]
+      properties:
+        nav:
+          type: array
+          items: { $ref: '#/components/schemas/NavGroup' }
+
+    PatchFeaturesRequest:
+      type: object
+      properties:
+        greenNotingEnabled: { type: boolean }
+        externalSmtpEnabled: { type: boolean }
+        require2faForAdmin: { type: boolean }
+
+    PatchOrgRequest:
+      type: object
+      properties:
+        name: { type: string }
+        timezone: { type: string }
+        locale: { type: string }
+        contactEmail: { type: string, format: email }
+
+    CreateRoutingRuleRequest:
+      type: object
+      required: [name, priorityOrder, isActive, conditions, destinations]
+      properties:
+        name: { type: string }
+        priorityOrder: { type: integer, minimum: 1 }
+        isActive: { type: boolean }
+        conditions:
+          type: array
+          items:
+            type: object
+            required: [fieldName, operator, matchValue]
+            properties:
+              fieldName: { type: string }
+              operator: { type: string }
+              matchValue: { type: string }
+        destinations:
+          type: array
+          items:
+            type: object
+            required: [priorityOffset]
+            properties:
+              userId:
+                type: string
+                format: uuid
+                nullable: true
+              departmentId:
+                type: string
+                format: uuid
+                nullable: true
+              priorityOffset: { type: integer }
+
+    CreateEscalationRuleRequest:
+      type: object
+      required: [name, escalateAfterHours, isActive]
+      properties:
+        name: { type: string }
+        documentTypeId:
+          type: string
+          format: uuid
+          nullable: true
+        priorityLevel:
+          type: string
+          nullable: true
+        escalateAfterHours: { type: integer, minimum: 1 }
+        notifyUserId:
+          type: string
+          format: uuid
+          nullable: true
+        notifyDepartmentId:
+          type: string
+          format: uuid
+          nullable: true
+        isActive: { type: boolean }

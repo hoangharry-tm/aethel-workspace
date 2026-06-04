@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aethel Workspace — API Reference</title>
+  <style>
+    body { margin: 0; padding: 0; }
+  </style>
+</head>
+<body>
+  <script
+    id="api-reference"
+    data-url="/api/docs/openapi.yaml"
+    data-proxy-url=""
+  ></script>
+  <script>
+    document.getElementById('api-reference').dataset.configuration = JSON.stringify({
+      theme: 'default',
+      layout: 'modern',
+      defaultHttpClient: { targetKey: 'js', clientKey: 'fetch' },
+      authentication: {
+        preferredSecurityScheme: 'BearerAuth',
+        http: { bearer: { token: '' } }
+      },
+      hideModels: false,
+      hideDownloadButton: false,
+      showSidebar: true,
+    })
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+</body>
+</html>

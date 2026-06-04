@@ -220,8 +220,10 @@ func (s *Server) buildRouter(
 	})
 
 	// API docs (Scalar UI + raw spec) — disabled by AETHEL_DISABLE_API_DOCS=true.
+	// Register both patterns; handler uses full r.URL.Path to distinguish them.
 	if docs.Enabled() {
-		r.Mount("/api/docs", docs.Handler())
+		r.Handle("/api/docs", docs.Handler())
+		r.Handle("/api/docs/*", docs.Handler())
 	}
 
 	return r
