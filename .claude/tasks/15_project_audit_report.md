@@ -5,29 +5,68 @@
 
 ---
 
+## ⚠️ Important: This Task Is State-Aware
+
+The file lists, expected package names, and route counts written below were accurate at the time this task was authored. By the time you run this task, **Tasks 11, 12, 13, and 14 will have been executed**, adding new files and modifying existing ones. Every agent **must discover the actual current state** from the filesystem and git history — never trust the hardcoded lists below as exhaustive. Use them only as a minimum baseline; any files found beyond the list must also be audited.
+
+---
+
+## Step 0 — Pre-flight Sync (Run This First, Before Spawning Any Agent)
+
+Before spawning any parallel agent, the orchestrating session must run the following and write the output to `/tmp/audit-preflight.md`. Every agent will read this file at the start of their work.
+
+```bash
+REPO=/Users/hoangharry/mh_code/internships/Bravo/aethel-workspace
+cd "$REPO"
+
+# 1. Pull the latest state from the remote
+git pull origin dev
+
+# 2. Capture recent commit history (last 30 commits)
+echo "## Recent Commits" > /tmp/audit-preflight.md
+git log --oneline -30 >> /tmp/audit-preflight.md
+
+# 3. Capture all files changed in the last 30 commits
+echo -e "\n## Files Changed in Last 30 Commits" >> /tmp/audit-preflight.md
+git diff HEAD~30..HEAD --stat 2>/dev/null >> /tmp/audit-preflight.md || git diff $(git rev-list --max-parents=0 HEAD)..HEAD --stat >> /tmp/audit-preflight.md
+
+# 4. Capture all new files added (untracked + recently committed)
+echo -e "\n## All Go Files in aethel-core (current)" >> /tmp/audit-preflight.md
+find aethel-core -name "*.go" | sort >> /tmp/audit-preflight.md
+
+echo -e "\n## All Vue/TS Files in aethel-view (current)" >> /tmp/audit-preflight.md
+find aethel-view/app -name "*.vue" -o -name "*.ts" | sort >> /tmp/audit-preflight.md
+
+echo -e "\n## All Task Files" >> /tmp/audit-preflight.md
+ls .claude/tasks/ >> /tmp/audit-preflight.md
+
+echo -e "\n## Git Status" >> /tmp/audit-preflight.md
+git status --short >> /tmp/audit-preflight.md
+
+echo "Pre-flight complete. Context written to /tmp/audit-preflight.md"
+cat /tmp/audit-preflight.md
+```
+
+Only after this completes successfully, spawn Agents 1–5 in parallel.
+
+---
+
 ## How This Task Runs
 
-Spawn **5 parallel subagents** immediately — one per domain. Each agent scans its scope, fills its section of a shared report template, and writes its section to a temp file. A final **synthesis agent** (Agent 6) waits for all 5 to complete, merges the sections, computes overall statistics, and writes the final report.
-
 ```
-Agent 1 — NuxtJS Auditor       → aethel-view/
-Agent 2 — Go Backend Auditor   → aethel-core/
-Agent 3 — Database Auditor     → migrations + schema + queries
-Agent 4 — Security Auditor     → auth, middleware, secrets, headers
-Agent 5 — DevOps Auditor       → Docker, K8s, CI/CD, scripts
-                    ↓ all complete
-Agent 6 — Synthesis Agent      → merge + overall score → final report
-```
-
-Each agent writes its findings to:
-```
-/tmp/audit-agent-{1..5}.md
+[Step 0]  Pre-flight sync → /tmp/audit-preflight.md
+              ↓
+[Parallel] Agent 1 — NuxtJS Auditor       → aethel-view/
+           Agent 2 — Go Backend Auditor   → aethel-core/
+           Agent 3 — Database Auditor     → migrations + schema + queries
+           Agent 4 — Security Auditor     → auth, middleware, secrets, headers
+           Agent 5 — DevOps Auditor       → Docker, K8s, CI/CD, scripts
+              ↓ all complete
+[Serial]   Agent 6 — Synthesis Agent      → merge + overall score → final report
 ```
 
-Agent 6 reads all five files and writes:
-```
-docs/reports/audit-YYYY-MM-DD.md
-```
+Each agent writes its findings to `/tmp/audit-agent-N.md` (N = 1..5).
+Agent 6 reads all five and writes `docs/reports/audit-YYYY-MM-DD.md`.
 
 ---
 
@@ -35,14 +74,12 @@ docs/reports/audit-YYYY-MM-DD.md
 
 ### Completion Scoring
 
-Rate each item on this scale — use it consistently across all agents:
-
 | Score | Meaning |
 |-------|---------|
 | ✅ Done | Fully implemented, tested, no known gaps |
 | 🔄 Partial | Core logic exists but missing tests, edge cases, or wiring |
 | ⚠️ Stub | File exists with placeholder / "under construction" content only |
-| ❌ Missing | File or feature not present at all |
+| ❌ Missing | File or feature expected but not present at all |
 | 🚫 Blocked | Cannot complete without a prerequisite that is not done |
 
 ### Percentage formula
@@ -51,7 +88,7 @@ Rate each item on this scale — use it consistently across all agents:
 completion % = (Done×1.0 + Partial×0.5 + Stub×0.1) / total_items × 100
 ```
 
-Apply this formula per section and for the overall score.
+Apply per section and for the overall score. `total_items` = everything you actually find on disk, not the baseline list in this file.
 
 ---
 
@@ -59,104 +96,134 @@ Apply this formula per section and for the overall score.
 
 **Scope:** `aethel-view/` — all pages, components, composables, plugins, middleware, assets
 
-**You are a senior NuxtJS 4 + Vue 3 + TypeScript engineer.** Read every `.vue`, `.ts`, and `.css` file in scope. Do not read `aethel-core/`.
+**You are a senior NuxtJS 4 + Vue 3 + TypeScript engineer.**
 
-### Audit checklist
+### Step 1: Read pre-flight context
 
-#### Pages (`app/pages/`)
-For each page file, report:
-- File path + line count
-- Completion score (Done / Partial / Stub / Missing)
-- Whether `definePageMeta` is set correctly
-- Whether it uses real API data or mock data (`useMockData()`)
-- Whether it uses semantic CSS tokens (zero palette classes: `text-slate-*`, `bg-white`, etc.)
-- Any TypeScript errors visible in the template (look for obvious `any` casts or missing type imports)
-
-Expected pages (check each exists and is not a stub):
-```
-pages/index.vue
-pages/auth/login.vue
-pages/dashboard.vue
-pages/dispatch/inbound/index.vue
-pages/dispatch/inbound/new.vue
-pages/dispatch/outbound/index.vue
-pages/documents/[id].vue
-pages/my-documents.vue
-pages/outgoing/new.vue
-pages/search.vue
-pages/admin/users.vue
-pages/admin/routing-rules.vue
-pages/admin/document-types.vue
-pages/admin/escalation.vue
-pages/admin/audit-log.vue
-pages/admin/reports.vue
-pages/admin/settings.vue
-pages/admin/branding.vue
-pages/admin/navigation.vue
-```
-
-#### Components (`app/components/`)
-- List all components found
-- Flag any component that hardcodes palette classes (grep for `text-slate`, `text-indigo`, `bg-white`, `bg-slate`, `text-gray`)
-- Flag any component not using Nuxt UI (`UButton`, `UTable`, etc.) but using raw HTML buttons or tables
-
-#### Composables (`app/composables/`)
-- Does `useAuth.ts` exist? Does it store access token in `useState` (not `localStorage`)?
-- Does `useRuntimeConfig.ts` exist and call real `$fetch('/api/v1/config')`?
-- Does `useMockData.ts` still exist (expected — it's the prototype data layer)?
-
-#### Plugins (`app/plugins/`)
-- Does `auth.client.ts` exist? Does it perform silent token recovery on page load?
-
-#### Middleware (`app/middleware/`)
-- Does `auth.ts` exist? Does it redirect unauthenticated users?
-- Does `role.ts` exist? Does it gate pages by requiredRole?
-
-#### Design system compliance
-Run these grep checks and report exact match counts:
 ```bash
-# Should be 0 — palette violations
+cat /tmp/audit-preflight.md
+```
+
+Note every `.vue` and `.ts` file listed under "All Vue/TS Files in aethel-view (current)" — these are the actual files that exist right now. Audit all of them, not just the baseline list below.
+
+### Step 2: Discover all pages
+
+```bash
+find aethel-view/app/pages -name "*.vue" | sort
+```
+
+For **every file found** (not just the baseline), report:
+
+| Column | What to record |
+|--------|----------------|
+| File path | Relative to `aethel-view/` |
+| Line count | `wc -l` |
+| Status | ✅ / 🔄 / ⚠️ / ❌ using completion scoring above |
+| definePageMeta | Correct layout + middleware set? |
+| Data source | Mock (`useMockData`) / Real (`$fetch`) / Both / None |
+| Semantic CSS | Zero palette violations? |
+| Notes | Any obvious issues |
+
+**Baseline pages** (written at task-author time — treat as minimum; audit any additional pages found):
+```
+pages/index.vue                       pages/search.vue
+pages/auth/login.vue                  pages/admin/users.vue
+pages/dashboard.vue                   pages/admin/routing-rules.vue
+pages/dispatch/inbound/index.vue      pages/admin/document-types.vue
+pages/dispatch/inbound/new.vue        pages/admin/escalation.vue
+pages/dispatch/outbound/index.vue     pages/admin/audit-log.vue
+pages/documents/[id].vue              pages/admin/reports.vue
+pages/my-documents.vue                pages/admin/settings.vue
+pages/outgoing/new.vue                pages/admin/branding.vue
+                                      pages/admin/navigation.vue
+```
+
+For any page **not in this baseline** that you find on disk, mark it as a bonus and audit it with the same criteria.
+
+### Step 3: Discover all components
+
+```bash
+find aethel-view/app/components -name "*.vue" | sort
+```
+
+For each component found, check:
+- Hardcodes palette classes? (`grep -l "text-slate\|text-indigo\|bg-white\|bg-slate\|text-gray\|text-zinc"`)
+- Uses raw `<button>` or `<table>` instead of Nuxt UI primitives?
+
+### Step 4: Composables, plugins, middleware
+
+```bash
+find aethel-view/app/composables aethel-view/app/plugins aethel-view/app/middleware -type f | sort
+```
+
+For each file found, determine its purpose and check:
+
+**Composables minimum expected** (audit any additional ones found too):
+- `useAuth.ts` — access token in `useState` not `localStorage`?
+- `useRuntimeConfig.ts` — calls real `$fetch('/api/v1/config')`?
+- `useMockData.ts` — prototype data layer, expected to exist
+
+**Plugins:**
+- `auth.client.ts` — silent token recovery on page load?
+
+**Middleware:**
+- `auth.ts` — redirects unauthenticated?
+- `role.ts` — gates by `requiredRole`?
+
+### Step 5: Design system compliance
+
+Run from `aethel-view/`:
+
+```bash
+# Must be 0 — palette violations
+echo "=== PALETTE VIOLATIONS ===" && grep -rn "text-slate\|text-indigo\|bg-white\|bg-slate\|text-gray\|text-zinc" app/pages/ app/components/ | wc -l
 grep -rn "text-slate\|text-indigo\|bg-white\|bg-slate\|text-gray\|text-zinc" app/pages/ app/components/
-# Should be > 0 — semantic tokens in use
-grep -rn "text-body\|text-muted\|text-accent\|bg-surface\|bg-subtle" app/pages/ app/components/
-# Should be 0 — localStorage forbidden for tokens
+
+# Must be > 0 — semantic tokens are being used
+echo "=== SEMANTIC TOKEN USAGE ===" && grep -rn "text-body\|text-muted\|text-accent\|bg-surface\|bg-subtle" app/pages/ app/components/ | wc -l
+
+# Must be 0 — localStorage forbidden for auth tokens
+echo "=== LOCALSTORAGE USAGE ===" && grep -rn "localStorage" app/ | wc -l
 grep -rn "localStorage" app/
 ```
 
-#### Build check
-```bash
-cd aethel-view
-pnpm build 2>&1 | tail -20
-```
-Report: success or first error message.
+### Step 6: Build check
 
-### Output format for Agent 1 section
+```bash
+cd aethel-view && pnpm build 2>&1 | tail -30
+```
+
+### Output format — write to `/tmp/audit-agent-1.md`
 
 ```markdown
 ## Frontend Audit (aethel-view/)
+_Audited at: [timestamp]_
+_Files discovered: N .vue files, M .ts files_
 
 ### Pages Summary
-| Page | Lines | Status | Mock/Real | Semantic CSS | Notes |
-|------|-------|--------|-----------|--------------|-------|
-| ... | ... | ✅/🔄/⚠️/❌ | Mock/Real/Both | ✅/❌ | ... |
+| Page | Lines | Status | Data Source | Semantic CSS | Notes |
+|------|-------|--------|-------------|--------------|-------|
 
-**Pages completion: X/19 done (X%), Y partial, Z stubs**
+**Total pages found: N (baseline expected: 19)**
+**Completion: X Done + Y Partial + Z Stubs = XX%**
 
-### Component Violations
-- Palette class violations: N files (list them)
-- Non-Nuxt-UI interactive elements: N files
+### Components Found
+- Total: N components
+- Palette violations: N files → [list]
+- Raw HTML interactive elements: N files → [list]
 
-### Composables & Plugins
-| File | Exists | Correct impl | Notes |
-|------|--------|-------------|-------|
+### Composables / Plugins / Middleware
+| File | Found | Purpose | Correct impl | Notes |
+|------|-------|---------|-------------|-------|
 
-### Design System Grep Results
-- Palette violations: N matches across N files
-- Semantic token usage: N matches (healthy)
+### Design System Compliance
+- Palette violations: N matches (must be 0)
+- Semantic token usage: N matches (healthy if > 0)
 - localStorage usage: N matches (must be 0)
 
 ### Build Status
-- pnpm build: ✅ Success / ❌ Failed (error: ...)
+- pnpm build: ✅ Success / ❌ Failed
+- Error (if any): ...
 
 ### Frontend Completion Score: XX%
 ```
@@ -167,125 +234,143 @@ Report: success or first error message.
 
 **Scope:** `aethel-core/` — all `.go` files, `go.mod`, `go.sum`
 
-**You are a senior Go engineer familiar with chi, zerolog, Argon2id, JWT, and PostgreSQL.** Read every `.go` file. Do not read `aethel-view/`.
+**You are a senior Go engineer familiar with chi, zerolog, Argon2id, JWT, and PostgreSQL.**
 
-### Audit checklist
+### Step 1: Read pre-flight context
 
-#### Build & vet
+```bash
+cat /tmp/audit-preflight.md
+```
+
+Note every `.go` file listed under "All Go Files in aethel-core (current)" — audit all of them.
+
+### Step 2: Build and vet
+
 ```bash
 cd aethel-core
 go build ./... 2>&1
 go vet ./... 2>&1
 ```
-Report: pass or first error.
 
-#### Package inventory
-For each package, report: exists ✅ / missing ❌ / stub (no real logic) ⚠️
+### Step 3: Discover all packages
 
-Expected packages:
-```
-cmd/aethel/               # main.go — startup sequence
-internal/app/             # org.go — LoadOrgID(), OrgID var
-internal/audit/           # writer.go, db_writer.go — centralized audit interface
-internal/blueprint/       # loader.go
-internal/config/          # cache.go, loader.go, handler.go
-internal/database/        # connect.go, migrator.go, query_registry.go
-internal/database/repos/  # all repo implementations
-internal/database/queries/ # queries.yaml
-internal/domain/          # all domain types + interfaces
-internal/api/             # server.go
-internal/api/handlers/    # auth.go, dispatch.go, workflow.go, governance.go, admin.go
-internal/api/docs/        # handler.go, openapi.yaml, scalar.html
-internal/rbac/            # middleware.go
-internal/service/         # auth_service.go, dispatch_service.go, workflow_service.go, governance_service.go, escalation_service.go
-internal/worker/          # escalation_worker.go
-internal/transport/       # sse.go (Sprint 5 — may be missing)
-```
-
-#### Repository implementations
-For each repo file, check:
-- Is it a real implementation or a noop/stub?
-- Does it use `qr.Get("group.name")` — zero inline SQL strings?
-- Does it reference `app.OrgID` instead of taking orgID as a parameter?
-
-Expected repos:
-```
-repos/user_repo.go
-repos/session_repo.go
-repos/password_reset_repo.go
-repos/audit_repo.go
-repos/dispatch_repo.go
-repos/dispatch_event_repo.go
-repos/routing_rule_repo.go
-repos/minute_sheet_repo.go
-repos/green_note_repo.go
-repos/escalation_rule_repo.go
-```
-
-Grep check:
 ```bash
-# Should be 0 — no inline SQL
-grep -rn "db\.Query\|db\.Exec\|db\.QueryRow" internal/database/repos/
-# Should be 0 — no orgID method params
-grep -rn "orgID\b" internal/service/ internal/database/repos/
-# Should be 0 — no org claim in JWT
-grep -rn "org.*claim\|claims\[.org.\]" internal/
+find aethel-core -type d | sort
+find aethel-core -name "*.go" | sort
 ```
 
-#### Service layer
-For each service, check:
-- Does it inject `audit.Writer` (not `domain.AuditRepository` directly)?
-- Are all business logic methods implemented (not empty or TODO)?
+For every package directory found, report its status. **Baseline packages** (minimum expected; audit any additional ones found):
 
-#### Routes registered in server.go
-Count the total registered routes and compare against the expected 50+ from `docs/architecture/architecture-api-routes.md`. List any routes in the architecture doc that are NOT registered.
-
-#### Test coverage
-```bash
-go test ./... 2>&1 | grep -E "^ok|FAIL|---"
-go test ./internal/service/... -v 2>&1 | grep -E "^=== RUN|--- PASS|--- FAIL"
 ```
-Report: X/Y tests passing, list failures.
+cmd/aethel/               internal/audit/           internal/api/docs/
+internal/app/             internal/blueprint/       internal/rbac/
+internal/config/          internal/database/        internal/service/
+internal/domain/          internal/api/             internal/worker/
+internal/database/repos/  internal/api/handlers/    internal/transport/
+```
 
-#### Inline SQL check
+### Step 4: Repository implementations
+
 ```bash
+find aethel-core/internal/database/repos -name "*.go" | sort
+```
+
+For **every repo file found** (not just the baseline below), check:
+- Real implementation or noop/stub? (look for actual SQL calls vs `return nil`)
+- Uses `qr.Get("group.name")`? (zero inline SQL strings?)
+- References `app.OrgID` instead of orgID method param?
+
+**Baseline repos** (minimum expected):
+```
+user_repo.go            dispatch_repo.go        minute_sheet_repo.go
+session_repo.go         dispatch_event_repo.go  green_note_repo.go
+password_reset_repo.go  routing_rule_repo.go    escalation_rule_repo.go
+audit_repo.go
+```
+
+### Step 5: Service layer
+
+```bash
+find aethel-core/internal/service -name "*.go" | sort
+```
+
+For each service file found:
+- Injects `audit.Writer` (not `domain.AuditRepository` directly)?
+- Methods with empty bodies or `// TODO`?
+
+### Step 6: Route coverage
+
+Read `docs/architecture/architecture-api-routes.md` to get the **authoritative** list of expected routes — do not rely on any number written in this task file, as routes may have been added by Tasks 11–14. Then count routes actually registered in `internal/api/server.go`. Report: registered vs expected, list any missing.
+
+### Step 7: Test results
+
+```bash
+cd aethel-core
+go test ./... 2>&1 | grep -E "^ok|FAIL|no test"
+go test ./internal/service/... -v 2>&1 | grep -E "^=== RUN|--- PASS|--- FAIL|--- SKIP"
+```
+
+### Step 8: Violation greps
+
+```bash
+cd aethel-core
+
+# Must be 0 — no inline SQL in repos or services
+echo "=== INLINE SQL ===" && grep -rn "\"SELECT\|\"INSERT\|\"UPDATE\|\"DELETE" internal/database/repos/ internal/service/ | wc -l
 grep -rn "\"SELECT\|\"INSERT\|\"UPDATE\|\"DELETE" internal/database/repos/ internal/service/
-```
-Report: exact count — must be 0.
 
-### Output format for Agent 2 section
+# Must be 0 — no orgID threaded through methods
+echo "=== ORGID PARAMS ===" && grep -rn "orgID\b" internal/service/ internal/database/repos/ | wc -l
+
+# Must be 0 — no org claim in JWT
+echo "=== ORG JWT CLAIM ===" && grep -rn "org.*claim\|claims\[.org.\]\|\"org\"" internal/ | wc -l
+
+# Check for noops (unfilled stubs)
+echo "=== NOOP REPOS ===" && grep -rn "return nil, nil\|// noop\|// TODO" internal/database/repos/ | wc -l
+grep -rn "return nil, nil\|// noop\|// TODO" internal/database/repos/
+```
+
+### Output format — write to `/tmp/audit-agent-2.md`
 
 ```markdown
 ## Backend Audit (aethel-core/)
+_Audited at: [timestamp]_
+_Go files discovered: N_
 
 ### Build Status
-- go build ./...: ✅ / ❌ (error)
+- go build ./...: ✅ / ❌ (error: ...)
 - go vet ./...: ✅ / ❌
 
 ### Package Inventory
-| Package | Status | Notes |
-|---------|--------|-------|
+| Package | Status | Key files | Notes |
+|---------|--------|-----------|-------|
 
 ### Repository Layer
-| Repo File | Exists | Real impl | Zero inline SQL | Uses app.OrgID |
-|-----------|--------|-----------|-----------------|----------------|
+| Repo File | Exists | Real impl | Zero inline SQL | Uses app.OrgID | Notes |
+|-----------|--------|-----------|-----------------|----------------|-------|
+
+**Repos: X/N real, Y stubs/noops**
 
 ### Service Layer
-| Service | Exists | audit.Writer injected | All methods implemented |
-|---------|--------|----------------------|-------------------------|
+| Service | Exists | audit.Writer | Methods complete | TODOs found |
+|---------|--------|-------------|-----------------|-------------|
 
 ### Route Coverage
-- Routes registered: N
-- Routes in architecture doc: 50+
+- Routes in architecture doc: N (read from the doc)
+- Routes registered in server.go: N
+- Coverage: XX%
 - Missing routes: [list]
 
 ### Test Results
-- Passing: N
-- Failing: N (list)
+- Packages with tests: N
+- Tests passing: N
+- Tests failing: N (list)
+- Packages with no tests: [list]
 
-### Grep Violations
+### Violation Report
 - Inline SQL strings: N (must be 0)
 - orgID method params: N (must be 0)
+- Noop/TODO stubs in repos: N
 
 ### Backend Completion Score: XX%
 ```
@@ -296,59 +381,97 @@ Report: exact count — must be 0.
 
 **Scope:** `aethel-core/internal/database/migrations/`, `aethel-core/internal/database/queries/queries.yaml`, `docs/db-design.mmd`
 
-**You are a senior PostgreSQL engineer.** Read every migration SQL file and the queries YAML. Do not read application Go code.
+**You are a senior PostgreSQL engineer.**
 
-### Audit checklist
+### Step 1: Read pre-flight context
 
-#### Migration files
-- Count total `.up.sql` and `.down.sql` files — should be equal
-- List each migration number and table/object created
-- Check that migration 21 exists (ALTER branding_configs — neutral_palette, font_family, wordmark)
-- Flag any migration that references a column not in `docs/db-design.mmd`
-- Flag any migration with `DROP TABLE` or destructive operations not in a `.down.sql` file
-
-#### Schema consistency vs ER diagram
-Read `docs/db-design.mmd`. For each table defined in the diagram, verify a migration creates it. Report discrepancies.
-
-Expected tables (20 + migration 21 objects):
-```
-organizations, departments, users, user_sessions, password_reset_tokens,
-notification_preferences, document_types, dispatches, dispatch_attachments,
-dispatch_events, routing_rules, routing_rule_conditions, routing_rule_destinations,
-minute_sheets, green_notes, notifications, escalation_rules, system_settings,
-branding_configs, audit_ledger (partitioned)
+```bash
+cat /tmp/audit-preflight.md
 ```
 
-#### queries.yaml completeness
-Read `internal/database/queries/queries.yaml`. List every query group and the named queries within each. Check for:
-- Groups expected: `auth`, `users`, `sessions`, `password_reset`, `dispatch`, `dispatch_events`, `routing_rules`, `minute_sheets`, `green_notes`, `escalation_rules`, `governance`, `config`, `notifications`
-- Missing groups
-- Queries referenced in Go service code (`qr.Get("X.Y")`) but not present in the YAML — grep for `qr.Get(` in all `.go` files, extract the key names, verify each exists in YAML
+Check "Files Changed in Last 30 Commits" for any new migration files added by Tasks 11–14.
 
-#### Template variable usage
-Check migration files for Go template syntax (`{{ .Schema }}`, `{{ T "..." }}`, `{{ E "..." }}`). List which migrations use templates and which use hardcoded names.
+### Step 2: Discover all migration files
 
-### Output format for Agent 3 section
+```bash
+find aethel-core/internal/database/migrations -name "*.sql" | sort
+```
+
+Do not assume a fixed count — count what's actually there. For every `.up.sql` found, check a corresponding `.down.sql` exists.
+
+For each migration, record: number, what it creates/alters, and whether it's referenced in `docs/db-design.mmd`.
+
+**Baseline tables** (minimum expected in the ER diagram — check for any additions beyond these):
+```
+organizations           routing_rules               system_settings
+departments             routing_rule_conditions     branding_configs
+users                   routing_rule_destinations   audit_ledger (partitioned)
+user_sessions           minute_sheets               + migration 21: ALTER branding_configs
+password_reset_tokens   green_notes                   adds neutral_palette, font_family, wordmark
+notification_preferences notifications
+document_types          escalation_rules
+dispatches              
+dispatch_attachments    
+dispatch_events         
+```
+
+### Step 3: queries.yaml completeness
+
+```bash
+cat aethel-core/internal/database/queries/queries.yaml
+```
+
+List every group and query key actually present. Then:
+
+```bash
+# Extract all qr.Get() calls from Go source
+grep -rn 'qr\.Get(' aethel-core/internal/ | grep -oP '"[^"]+\.(?:[^"]+)"' | sort -u
+```
+
+Cross-reference: every key called in Go must exist in the YAML. Report any dangling references.
+
+**Baseline query groups** (minimum expected — audit any additional groups found):
+```
+auth / users / sessions / password_reset / dispatch / dispatch_events /
+routing_rules / minute_sheets / green_notes / escalation_rules /
+governance / config / notifications
+```
+
+### Step 4: Template variable usage
+
+```bash
+grep -rn "{{ .Schema }}\|{{ T \|{{ E " aethel-core/internal/database/migrations/
+```
+
+### Output format — write to `/tmp/audit-agent-3.md`
 
 ```markdown
 ## Database Audit
+_Audited at: [timestamp]_
+_Migration files found: N up + N down_
 
 ### Migration Files
-- Total up migrations: N
-- Total down migrations: N
-- Paired correctly: ✅ / ❌ (list unpaired)
-- Migration 21 (branding_configs ALTER): ✅ / ❌
+- Total up: N  |  Total down: N  |  Paired: ✅/❌
+- Highest migration number: N
+- Migration 21 (ALTER branding_configs): ✅/❌
+- Unpaired migrations: [list]
 
 ### Schema vs ER Diagram
-| Table | In Diagram | Migration # | Discrepancies |
-|-------|-----------|-------------|---------------|
+| Table | In Diagram | Migration # | Status | Discrepancies |
+|-------|-----------|-------------|--------|---------------|
 
 ### queries.yaml Coverage
-| Group | Exists | Query Count | Missing queries |
+| Group | Exists | Query count | Missing queries |
 |-------|--------|-------------|-----------------|
 
-### Dangling qr.Get() calls (keys in Go but not in YAML)
-- N dangling keys (list them)
+**Total queries defined: N**
+**Groups found: N (baseline expected: 13)**
+
+### Dangling qr.Get() Keys (in Go but not in YAML)
+- N dangling keys: [list]
+
+### Template Usage
+- Migrations using templates: N / N total
 
 ### Database Completion Score: XX%
 ```
@@ -357,95 +480,129 @@ Check migration files for Go template syntax (`{{ .Schema }}`, `{{ T "..." }}`, 
 
 ## Agent 4 — Security Auditor
 
-**Scope:** entire repository — focus on `aethel-core/internal/`, `aethel-view/app/`, `.env.example`, `aethel-scripts/`
+**Scope:** Entire repository — focus on `aethel-core/internal/`, `aethel-view/app/`, `.env.example`, `aethel-scripts/`
 
-**You are a senior application security engineer.** Your job is to verify that all security controls documented in `docs/architecture/architecture-security.md` are actually implemented in code.
+**You are a senior application security engineer.** Verify that all controls in `docs/architecture/architecture-security.md` are actually implemented.
 
-### Audit checklist
+### Step 1: Read pre-flight context + security architecture
 
-#### Authentication
-- [ ] JWT algorithm is RS256 or HS256 (read `internal/service/auth_service.go`) — no `alg: none`
-- [ ] JWT claims: `sub`, `role`, `iat`, `exp`, `jti` present — no `org` claim (single-tenant)
-- [ ] Argon2id parameters: memory ≥ 64MiB, iterations ≥ 3, threads ≥ 4 (grep for `argon2.IDKey`)
-- [ ] Access token NOT stored in `localStorage` on the frontend (grep `aethel-view/`)
-- [ ] Refresh token set as `httpOnly` cookie (grep `SetCookie` + `HttpOnly`)
-- [ ] Refresh token rotation is atomic (single DB transaction deletes old + inserts new)
-
-#### Middleware stack (read `internal/api/server.go`)
-Verify these middleware are applied in this exact order:
-1. Recovery
-2. RequestID
-3. StructuredLogger
-4. RateLimiter
-5. CORS
-6. Auth
-7. RBAC
-8. Handler
-
-Report: exact order found vs expected.
-
-#### CSRF protection
-- [ ] `CSRFProtect` middleware exists in `internal/api/` or `internal/middleware/`
-- [ ] Uses `crypto/subtle.ConstantTimeCompare` (not `==` for token comparison)
-- [ ] CSRF token set as a readable cookie (not httpOnly) so the JS frontend can read it
-- [ ] CSRF token validated on all state-changing requests (POST, PATCH, DELETE)
-
-#### Security headers
-Read `internal/api/` for a `SecurityHeaders` middleware. Verify these headers are set:
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
-- `Strict-Transport-Security` (HSTS — only over HTTPS)
-- `Content-Security-Policy`
-- `Referrer-Policy`
-
-#### Secrets audit
 ```bash
-# Must return 0 — no secrets hardcoded
-grep -rn "AETHEL_JWT_SECRET\|-----BEGIN RSA\|password.*=.*['\"]" aethel-core/ aethel-view/ --include="*.go" --include="*.ts" --include="*.vue"
-# .env.example should exist and contain no real values
-cat .env.example | grep -v "^#" | grep "="
+cat /tmp/audit-preflight.md
+cat docs/architecture/architecture-security.md
 ```
 
-#### Account lockout
-- [ ] Failed login attempts tracked (grep `failed_login_attempts` or equivalent)
-- [ ] Locked account returns HTTP 423 (not 403 or 401) — grep for `423` in handlers
+The security architecture doc is the **authoritative source** of what controls are required. If new controls were added to the doc by recent tasks, audit those too.
 
-#### db-harden.sql
-- [ ] `aethel-core/scripts/db-harden.sql` exists
-- [ ] Contains REVOKE statements on `audit_ledger` for non-superuser roles
+### Step 2: Authentication controls
 
-### Output format for Agent 4 section
+```bash
+# JWT algorithm
+grep -rn "SigningMethod\|HS256\|RS256\|alg" aethel-core/internal/service/auth_service.go
+
+# JWT claims — should have sub, role, iat, exp, jti — no org
+grep -rn "MapClaims\|RegisteredClaims\|\"sub\"\|\"role\"\|\"org\"\|\"jti\"" aethel-core/internal/service/auth_service.go
+
+# Argon2id params
+grep -rn "argon2\|IDKey\|Memory\|Iterations\|Parallelism" aethel-core/internal/service/auth_service.go
+
+# httpOnly cookie
+grep -rn "HttpOnly\|SetCookie\|refresh_token" aethel-core/internal/api/handlers/auth.go
+
+# localStorage forbidden
+grep -rn "localStorage" aethel-view/app/
+
+# Refresh token rotation — look for tx.Commit in session handling
+grep -rn "BeginTx\|RotateSession\|DeleteSession.*InsertSession\|tx\.Commit" aethel-core/internal/service/auth_service.go aethel-core/internal/database/repos/session_repo.go
+```
+
+### Step 3: Middleware stack order
+
+Read `aethel-core/internal/api/server.go`. List the exact middleware chain order as it appears in the code. Compare to expected:
+
+```
+Expected: Recovery → RequestID → StructuredLogger → RateLimiter → CORS → Auth → RBAC → Handler
+```
+
+### Step 4: CSRF protection
+
+```bash
+find aethel-core/internal -name "csrf*.go" -o -name "*csrf*.go" | sort
+grep -rn "ConstantTimeCompare\|csrf\|X-CSRF" aethel-core/internal/
+grep -rn "csrf" aethel-view/app/
+```
+
+### Step 5: Security headers
+
+```bash
+find aethel-core/internal -name "*security*header*" -o -name "*header*security*" | sort
+grep -rn "X-Content-Type-Options\|X-Frame-Options\|Strict-Transport\|Content-Security-Policy\|Referrer-Policy" aethel-core/internal/
+```
+
+### Step 6: Secrets and account lockout
+
+```bash
+# No hardcoded secrets
+grep -rn "AETHEL_JWT_SECRET\s*=\s*\|-----BEGIN RSA PRIVATE\|password\s*:=\s*\"" aethel-core/ aethel-view/ --include="*.go" --include="*.ts" --include="*.vue"
+
+# .env.example exists and has no real values (only placeholders)
+cat .env.example
+
+# Account lockout — 423 status
+grep -rn "423\|StatusLocked\|ErrAccountLocked" aethel-core/internal/
+
+# db-harden.sql
+ls aethel-core/scripts/db-harden.sql 2>/dev/null && grep -c "REVOKE" aethel-core/scripts/db-harden.sql
+```
+
+### Output format — write to `/tmp/audit-agent-4.md`
 
 ```markdown
 ## Security Audit
+_Audited at: [timestamp]_
+_Security architecture doc read: ✅/❌_
 
 ### Authentication Controls
-| Control | Status | Evidence (file:line) |
-|---------|--------|----------------------|
+| Control | Status | Evidence (file:line) | Notes |
+|---------|--------|----------------------|-------|
+| JWT algorithm RS256/HS256 | | | |
+| JWT claims correct (no org) | | | |
+| Argon2id params ≥ 64MiB/3iter/4threads | | | |
+| Access token NOT in localStorage | | | |
+| Refresh token httpOnly cookie | | | |
+| Refresh token rotation atomic | | | |
 
-### Middleware Stack Order
+### Middleware Stack
 Expected: Recovery → RequestID → StructuredLogger → RateLimiter → CORS → Auth → RBAC
-Actual:   [list what's found in server.go]
-Match: ✅ / ❌
+Actual:   [exact order from server.go]
+Match: ✅/❌
 
 ### CSRF Protection
-| Check | Status | Notes |
-|-------|--------|-------|
+| Check | Status | File | Notes |
+|-------|--------|------|-------|
+| Middleware exists | | | |
+| ConstantTimeCompare used | | | |
+| Token in readable cookie | | | |
+| Applied to POST/PATCH/DELETE | | | |
 
 ### Security Headers
-| Header | Present | Value |
+| Header | Present | Notes |
 |--------|---------|-------|
-
-### Secrets Audit
-- Hardcoded secrets found: N (must be 0)
-- .env.example real values: N (must be 0)
+| X-Content-Type-Options | | |
+| X-Frame-Options | | |
+| Strict-Transport-Security | | |
+| Content-Security-Policy | | |
+| Referrer-Policy | | |
 
 ### Other Controls
 | Control | Status | Notes |
 |---------|--------|-------|
+| No hardcoded secrets | | |
+| .env.example placeholder-only | | |
+| Account lockout → 423 | | |
+| db-harden.sql exists + REVOKE | | |
 
-### Security Score: XX% (N/M controls passing)
-### Critical findings: [list any ❌ items]
+### Security Score: XX% (N/M controls ✅)
+### Critical findings (❌ items): [list]
 ```
 
 ---
@@ -454,58 +611,100 @@ Match: ✅ / ❌
 
 **Scope:** `Makefile`, `docker-compose.yml`, `docker-compose.prod.yml`, `aethel-core/Dockerfile`, `aethel-view/Dockerfile`, `k8s/`, `.github/workflows/`, `aethel-scripts/`
 
-**You are a senior DevOps / platform engineer.** Read every infrastructure file. Do not read application source code.
+**You are a senior DevOps / platform engineer.**
 
-### Audit checklist
+### Step 1: Read pre-flight context
 
-#### Docker
-- [ ] `aethel-core/Dockerfile` exists — is it a multi-stage build? Does stage 2 use a distroless or minimal base?
-- [ ] `aethel-view/Dockerfile` exists — is it a multi-stage build?
-- [ ] `docker-compose.yml` defines: `postgres`, `backend`, `frontend` services
-- [ ] PostgreSQL port mapping: host `5433` → container `5432` (non-default to avoid collision)
-- [ ] `docker-compose.prod.yml` exists with production overrides
-- [ ] Health checks defined on backend + postgres services
-- [ ] No secrets hardcoded in compose files — all from environment variables
-
-#### Kubernetes
-- [ ] `k8s/` directory exists
-- Expected manifests: `postgres/StatefulSet`, `postgres/PVC`, `backend/Deployment`, `backend/HPA`, `backend/ConfigMap`, `frontend/Deployment`, `frontend/Service`, `ingress.yaml`
-- List which manifests exist and which are missing
-- [ ] Namespace set to `aethel-workspace` in all manifests
-
-#### GitHub Actions
-- [ ] `ci.yml` exists — does it run `go test ./...` + `pnpm test` + lint in parallel?
-- [ ] `cd.yml` exists — does it build + push to GHCR on merge to main?
-- [ ] `security.yml` exists — does it run Trivy + govulncheck + gosec?
-- [ ] PostgreSQL service defined in CI for integration tests
-
-#### Scripts (`aethel-scripts/`)
-Expected scripts:
+```bash
+cat /tmp/audit-preflight.md
 ```
-setup-dev.sh
-health-check.sh
-rotate-jwt-secret.sh
-db-backup.sh
-k8s-rollout.sh
+
+Note any new workflow or infrastructure files added by recent tasks.
+
+### Step 2: Discover all infra files
+
+```bash
+find . -name "Dockerfile*" -o -name "docker-compose*.yml" | sort
+find k8s/ -type f 2>/dev/null | sort
+find .github/workflows/ -type f 2>/dev/null | sort
+find aethel-scripts/ -type f 2>/dev/null | sort
+ls Makefile 2>/dev/null
 ```
-For each: exists ✅ / missing ❌ / exists but empty ⚠️
 
-#### Makefile
-- [ ] `make help` target exists
-- [ ] Common targets present: `dev`, `build`, `test`, `migrate`, `deploy`
+Audit **everything found**, not just the baseline below.
 
-### Output format for Agent 5 section
+### Step 3: Docker
+
+For each Dockerfile found:
+- Multi-stage build? (look for multiple `FROM`)
+- Production stage uses distroless or minimal base (`scratch`, `gcr.io/distroless/*`, `alpine`)?
+- No secrets in ENV or ARG?
+
+For docker-compose files:
+- Services defined: postgres, backend, frontend?
+- PostgreSQL port: host `5433` → container `5432`?
+- Health checks present?
+- Secrets from env vars, not hardcoded?
+
+### Step 4: Kubernetes
+
+```bash
+find k8s/ -type f | sort
+```
+
+**Baseline manifests** (minimum expected — audit any additional manifests found):
+```
+k8s/postgres/StatefulSet    k8s/backend/Deployment     k8s/frontend/Deployment
+k8s/postgres/PVC            k8s/backend/HPA            k8s/frontend/Service
+k8s/postgres/Service        k8s/backend/ConfigMap      k8s/ingress.yaml
+```
+
+For each found: does it set `namespace: aethel-workspace`?
+
+### Step 5: GitHub Actions
+
+```bash
+find .github/workflows/ -name "*.yml" | sort
+cat .github/workflows/*.yml 2>/dev/null
+```
+
+For each workflow found, read it and check:
+- `ci.yml` — runs `go test ./...` AND `pnpm test` AND lint?
+- `cd.yml` — builds + pushes to GHCR on merge to main?
+- `security.yml` — runs Trivy + govulncheck + gosec?
+- Any workflow: PostgreSQL service defined for integration tests?
+
+### Step 6: Scripts
+
+```bash
+for f in aethel-scripts/setup-dev.sh aethel-scripts/health-check.sh \
+          aethel-scripts/rotate-jwt-secret.sh aethel-scripts/db-backup.sh \
+          aethel-scripts/k8s-rollout.sh; do
+  [ -f "$f" ] && echo "$f: $(wc -l < $f) lines" || echo "$f: MISSING"
+done
+```
+
+Also check `aethel-core/scripts/` for any new scripts added:
+```bash
+find aethel-core/scripts/ -type f 2>/dev/null | sort
+```
+
+### Output format — write to `/tmp/audit-agent-5.md`
 
 ```markdown
 ## DevOps Audit
+_Audited at: [timestamp]_
+_Infra files discovered: N_
 
 ### Docker
-| Artifact | Exists | Multi-stage | Notes |
-|----------|--------|-------------|-------|
+| Artifact | Exists | Multi-stage | Distroless stage | No hardcoded secrets | Notes |
+|----------|--------|-------------|-----------------|----------------------|-------|
 
 ### Kubernetes Manifests
 | Manifest | Exists | Correct namespace | Notes |
 |----------|--------|------------------|-------|
+
+**Manifests: X/N found (baseline expected: 9)**
 
 ### GitHub Actions Workflows
 | Workflow | Exists | Key steps verified | Notes |
@@ -516,8 +715,9 @@ For each: exists ✅ / missing ❌ / exists but empty ⚠️
 |--------|--------|-----------|-------|
 
 ### Makefile
-- make help: ✅ / ❌
-- Key targets: [list found]
+- Exists: ✅/❌
+- make help: ✅/❌
+- Key targets found: [list]
 
 ### DevOps Completion Score: XX%
 ```
@@ -526,27 +726,49 @@ For each: exists ✅ / missing ❌ / exists but empty ⚠️
 
 ## Agent 6 — Synthesis Agent (runs after all 5 complete)
 
-**Wait for all 5 temp files to exist:**
+### Step 1: Verify all temp files exist
+
 ```bash
-ls /tmp/audit-agent-{1,2,3,4,5}.md
+for i in 1 2 3 4 5; do
+  [ -f "/tmp/audit-agent-$i.md" ] && echo "Agent $i: ✅" || echo "Agent $i: ❌ MISSING"
+done
 ```
 
-**Read all five files.** Merge into a single report. Compute the overall score using the formula:
+If any file is missing, wait or re-run the missing agent before continuing.
+
+### Step 2: Read all findings
+
+Read `/tmp/audit-agent-{1..5}.md` in full. Extract the completion score (`XX%`) from each.
+
+### Step 3: Compute overall score
 
 ```
-overall = (frontend_pct × 0.25) + (backend_pct × 0.30) + (database_pct × 0.15) + (security_pct × 0.20) + (devops_pct × 0.10)
+overall = (frontend × 0.25) + (backend × 0.30) + (database × 0.15) + (security × 0.20) + (devops × 0.10)
 ```
 
-Weights rationale: backend is the most work-in-progress (0.30); security is critical (0.20); frontend prototype is mostly done (0.25); database is stable (0.15); DevOps is scaffolded (0.10).
+### Step 4: Read the agile plan for sprint status comparison
 
-### Final report structure
+```bash
+cat docs/plans/agile-implementation-plan.md | head -40
+```
 
-Write to `docs/reports/audit-YYYY-MM-DD.md` (use the actual date):
+Use the Implementation Status table in the plan doc as the expected baseline. For each sprint, compare what the plan says vs what the audit findings show.
+
+### Step 5: Write the final report
+
+```bash
+mkdir -p docs/reports
+REPORT="docs/reports/audit-$(date +%Y-%m-%d).md"
+```
+
+Report structure:
 
 ```markdown
 # Aethel Workspace — Project Audit Report
 **Date:** YYYY-MM-DD
-**Audited by:** 5-agent parallel audit team (Claude Code)
+**Git HEAD:** [git rev-parse --short HEAD]
+**Recent changes:** [paste the 10 most recent commits from preflight]
+**Audited by:** 5-agent parallel audit team (Claude Code Task 15)
 
 ---
 
@@ -563,59 +785,105 @@ Write to `docs/reports/audit-YYYY-MM-DD.md` (use the actual date):
 
 ---
 
-## Critical Findings (must fix before Sprint 5)
+## Critical Findings (block Sprint 5 if unresolved)
 
-List any ❌ items across all domains that block forward progress.
+[List every ❌ item from all 5 agents, grouped by domain. Be specific: file path, what's wrong, what's needed.]
 
 ---
 
 ## Sprint Progress vs Agile Plan
 
-| Sprint | Plan Status | Actual Status | Delta |
-|--------|-------------|---------------|-------|
-| Sprint 0 | Complete | [from audit] | |
-| Sprint 1 | Complete | [from audit] | |
-| Sprint 1.5 | Complete | [from audit] | |
-| Sprint 2 | Running | [from audit] | |
-| Sprint 3 | Queued | [from audit] | |
-| Sprint 4 | Not started | [from audit] | |
-| Sprint 5 | Not started | [from audit] | |
-| Sprint 6 | Not started | [from audit] | |
+| Sprint | Plan Status | Audit Actual | Gap |
+|--------|-------------|--------------|-----|
+| Sprint 0 — Foundation | Complete | [from audit] | [delta] |
+| Sprint 1 — Auth | Complete | [from audit] | [delta] |
+| Sprint 1.5 — Security | Complete | [from audit] | [delta] |
+| Sprint 2 — Dispatch | [from plan doc] | [from audit] | [delta] |
+| Sprint 3 — Workflow | [from plan doc] | [from audit] | [delta] |
+| Sprint 4 — Governance | [from plan doc] | [from audit] | [delta] |
+| Sprint 5 — API Complete | Not started | [from audit] | [delta] |
+| Sprint 6 — Hardening | Not started | [from audit] | [delta] |
+
+---
+
+## Statistics Summary
+
+| Metric | Count |
+|--------|-------|
+| Total Vue pages found | N |
+| Pages fully complete | N |
+| Pages stub/incomplete | N |
+| Go packages found | N |
+| Repo implementations (real) | N |
+| Repo implementations (stub/noop) | N |
+| Total unit tests | N |
+| Passing tests | N |
+| SQL migrations | N |
+| query.yaml groups | N |
+| Routes registered | N |
+| Security controls ✅ | N/M |
+| Inline SQL violations | N (must be 0) |
+| Palette CSS violations | N (must be 0) |
+| localStorage violations | N (must be 0) |
 
 ---
 
 ## Detailed Findings
 
-[Paste each agent's full section here verbatim]
+[Paste each agent's full `/tmp/audit-agent-N.md` verbatim, separated by `---`]
 
 ---
 
 ## Recommendations for Next Session
 
-Top 5 highest-impact items to address, ordered by priority.
+Top 5 highest-impact items, ordered by priority:
+
+1. [item]
+2. [item]
+3. [item]
+4. [item]
+5. [item]
 ```
 
-After writing the report, output the Executive Summary table to the console so the user sees the results immediately without opening the file.
+### Step 6: Print summary to console
+
+After writing the file, print the Executive Summary table and Critical Findings section directly to the terminal so the user sees results immediately.
+
+### Step 7: Commit
+
+```bash
+git add docs/reports/
+git commit -m "chore(audit): project progress report $(date +%Y-%m-%d)
+
+Overall score: XX%
+Frontend: XX% | Backend: XX% | Database: XX% | Security: XX% | DevOps: XX%"
+git push origin dev
+```
 
 ---
 
 ## Execution Instructions
 
 ```
-1. Spawn Agents 1–5 in parallel (single message, 5 Agent tool calls)
-2. Each agent writes its section to /tmp/audit-agent-N.md
-3. Wait for all 5 completion notifications
-4. Spawn Agent 6 to synthesize
-5. Agent 6 writes the final report to docs/reports/audit-YYYY-MM-DD.md
-6. Agent 6 prints the Executive Summary table to console
-7. Commit the report: git add docs/reports/ && git commit -m "chore(audit): project progress report YYYY-MM-DD"
+1. Run Step 0 pre-flight (orchestrating session, not a subagent)
+2. Verify /tmp/audit-preflight.md was written successfully
+3. Spawn Agents 1–5 in a single message (5 parallel Agent tool calls)
+   — pass /tmp/audit-preflight.md path in each agent's prompt
+4. Wait for all 5 completion notifications
+5. Spawn Agent 6 to synthesize
+6. Agent 6 writes + commits the final report
+7. Print Executive Summary to console
 ```
 
 ## Definition of Done
 
+- [ ] `/tmp/audit-preflight.md` written with current git state
 - [ ] All 5 audit temp files written to `/tmp/audit-agent-{1..5}.md`
 - [ ] Final report written to `docs/reports/audit-YYYY-MM-DD.md`
-- [ ] Overall completion percentage computed and displayed
-- [ ] Critical findings section lists all ❌ items
-- [ ] Report committed to `dev` branch
-- [ ] No code was modified — this task is read-only
+- [ ] Overall completion percentage computed with correct weighting
+- [ ] Executive Summary printed to console
+- [ ] Critical findings section lists every ❌ item with file paths
+- [ ] Sprint progress table shows plan vs actual for all 8 sprints
+- [ ] Statistics summary table populated with real counts
+- [ ] Report committed and pushed to `dev` branch
+- [ ] Zero files were modified (read-only audit)
