@@ -1,7 +1,26 @@
 # Agile Implementation Plan — Phase 2: Go Backend
 
 **Audience:** Project leads, Go engineers
-**Status:** Active
+**Status:** Active — last updated 2026-06-04
+
+---
+
+## Implementation Status
+
+| Sprint | Focus | Task File(s) | Status | Notes |
+|--------|-------|-------------|--------|-------|
+| Sprint 0 | Foundation | — | ✅ Complete | CLI, migrator, 50+ routes, stub repos |
+| Sprint 1 | Core Domain & Auth | Task 10 | ✅ Complete | audit_repo, auth tests, seed loader, db-harden |
+| Sprint 1.5 | Security + FE Auth Wiring | Task 08/09 | ✅ Complete | SecurityHeaders, CSRF, useAuth.ts, login.vue wired |
+| Sprint 2 | Dispatch Pillar + Config API | Task 11 | 🔄 Running | Routing bug fix, atomic create, unassigned inbox |
+| Sprint 3 | Workflow Pillar (Green Notes) | Task 12 | ⏳ Queued | minute_sheet_repo, green_note_repo, hash chain |
+| Task 13 | UI/UX — Stub Pages | Task 13 | ⏳ Queued | 4 admin stubs + Green Notes tab (Figma-first) |
+| Task 09 | OpenAPI 3.1 + Scalar | Task 09 | ✅ Complete | Spec, go:embed, Scalar UI, feature gate |
+| Sprint 4 | Governance Pillar | Task 14 | ⏳ Not started | Audit chain verify, escalation worker |
+| Sprint 5 | API Completeness + SSE + i18n | — | ⏳ Not started | All 50+ routes, SSEBroker, FE integration |
+| Sprint 6 | Hardening | — | ⏳ Not started | Benchmarks, race tests, CHANGELOG, Docker |
+
+**Legend:** ✅ Complete · 🔄 Running now · ⏳ Queued/pending
 
 ---
 
