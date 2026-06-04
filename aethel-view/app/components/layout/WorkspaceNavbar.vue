@@ -170,9 +170,7 @@ const profileItems = computed(() => [
               {{ currentUser.role }}
             </UBadge>
             <!-- Role switcher is prototype/demo only — route guards use JWT role from useAuth() -->
-            <UBadge color="warning" variant="soft" size="xs">
-              Demo mode
-            </UBadge>
+            <UBadge color="warning" variant="soft" size="xs" class="ml-2">Demo only</UBadge>
           </div>
         </div>
       </template>

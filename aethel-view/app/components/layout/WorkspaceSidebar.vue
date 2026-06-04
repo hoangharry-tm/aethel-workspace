@@ -56,16 +56,14 @@ const hardcodedNavGroups = computed<NavGroup[]>(() => [
   },
 ])
 
-// Use runtime config nav when available, fall back to hardcoded
-const navGroups = computed<NavGroup[]>(() =>
-  config.value.nav.length > 0 ? config.value.nav : hardcodedNavGroups.value,
-)
-
-// Gate nav groups using the real JWT role. Falls back to mock role in prototype mode
-// (when the user hasn't authenticated through the real backend yet).
-const visibleGroups = computed(() => {
-  const role = authUser.value?.role ?? currentUser.value.role
-  return navGroups.value.filter(g => g.roles.includes(role))
+// Gate nav groups using the real JWT role only. If no authenticated user exists,
+// return an empty array — nav must never be visible without authentication.
+// currentUser from useMockData() is used only for avatar URL and display name below.
+const visibleGroups = computed<NavGroup[]>(() => {
+  const role = authUser.value?.role
+  if (!role) return []
+  return (config.value.nav.length > 0 ? config.value.nav : hardcodedNavGroups.value)
+    .filter(g => g.roles.includes(role))
 })
 
 function isActive(to: string) {
