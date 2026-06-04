@@ -54,8 +54,8 @@ func Handler() http.Handler {
 			return
 		}
 		// Match the full path to avoid prefix-stripping ambiguity with chi Mount.
-		switch {
-		case r.URL.Path == "/api/docs/openapi.yaml":
+		switch r.URL.Path {
+		case "/api/docs/openapi.yaml":
 			w.Header().Set("Content-Type", "application/yaml; charset=utf-8")
 			w.Header().Set("Cache-Control", "public, max-age=300")
 			_, _ = w.Write(specBytes)

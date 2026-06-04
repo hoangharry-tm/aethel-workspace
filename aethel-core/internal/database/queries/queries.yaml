@@ -39,21 +39,21 @@ queries:
           is_manually_routed, is_escalated, created_at, updated_at
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,false,false,now(),now())
       params:
-        - "uuid"     # $1: id
-        - "uuid"     # $2: organization_id
-        - "varchar"  # $3: tracking_number
-        - "varchar"  # $4: direction
-        - "uuid"     # $5: document_type_id
-        - "varchar"  # $6: sender_name
-        - "varchar"  # $7: sender_organization (nullable)
-        - "varchar"  # $8: recipient_name (nullable)
-        - "varchar"  # $9: recipient_organization (nullable)
-        - "text"     # $10: recipient_address (nullable)
-        - "uuid"     # $11: submitted_by_user_id
-        - "varchar"  # $12: priority_level
-        - "varchar"  # $13: status_state
-        - "text"     # $14: subject_line (nullable)
-        - "varchar"  # $15: delivery_mode (nullable)
+        - "uuid" # $1: id
+        - "uuid" # $2: organization_id
+        - "varchar" # $3: tracking_number
+        - "varchar" # $4: direction
+        - "uuid" # $5: document_type_id
+        - "varchar" # $6: sender_name
+        - "varchar" # $7: sender_organization (nullable)
+        - "varchar" # $8: recipient_name (nullable)
+        - "varchar" # $9: recipient_organization (nullable)
+        - "text" # $10: recipient_address (nullable)
+        - "uuid" # $11: submitted_by_user_id
+        - "varchar" # $12: priority_level
+        - "varchar" # $13: status_state
+        - "text" # $14: subject_line (nullable)
+        - "varchar" # $15: delivery_mode (nullable)
       timeout_ms: 3000
       required_permission: "dispatch.create"
 
@@ -69,7 +69,7 @@ queries:
                is_escalated, created_at, updated_at
         FROM dispatches WHERE id = $1
       params:
-        - "uuid"  # $1: id
+        - "uuid" # $1: id
       timeout_ms: 3000
       required_permission: "dispatch.view"
 
@@ -85,7 +85,7 @@ queries:
                is_escalated, created_at, updated_at
         FROM dispatches WHERE tracking_number = $1
       params:
-        - "varchar"  # $1: tracking_number
+        - "varchar" # $1: tracking_number
       timeout_ms: 2000
       required_permission: "dispatch.view"
 
@@ -105,9 +105,9 @@ queries:
         ORDER BY priority_level DESC, created_at ASC
         LIMIT $2 OFFSET $3
       params:
-        - "uuid"     # $1: assigned_department_id
-        - "integer"  # $2: limit
-        - "integer"  # $3: offset
+        - "uuid" # $1: assigned_department_id
+        - "integer" # $2: limit
+        - "integer" # $3: offset
       timeout_ms: 5000
       required_permission: "dispatch.view"
 
@@ -126,8 +126,8 @@ queries:
         ORDER BY created_at DESC
         LIMIT $1 OFFSET $2
       params:
-        - "integer"  # $1: limit
-        - "integer"  # $2: offset
+        - "integer" # $1: limit
+        - "integer" # $2: offset
       timeout_ms: 5000
       required_permission: "dispatch.view"
 
@@ -146,9 +146,9 @@ queries:
         ORDER BY created_at DESC
         LIMIT $2 OFFSET $3
       params:
-        - "uuid"     # $1: submitted_by_user_id
-        - "integer"  # $2: limit
-        - "integer"  # $3: offset
+        - "uuid" # $1: submitted_by_user_id
+        - "integer" # $2: limit
+        - "integer" # $3: offset
       timeout_ms: 5000
       required_permission: "dispatch.view"
 
@@ -156,7 +156,7 @@ queries:
       statement: |
         UPDATE dispatches SET status_state = $2, updated_at = now() WHERE id = $1
       params:
-        - "uuid"    # $1: id
+        - "uuid" # $1: id
         - "varchar" # $2: status_state
       timeout_ms: 2000
       required_permission: "dispatch.update"
@@ -167,9 +167,9 @@ queries:
         SET assigned_user_id = $2, assigned_department_id = $3, updated_at = now()
         WHERE id = $1
       params:
-        - "uuid"  # $1: id
-        - "uuid"  # $2: assigned_user_id (nullable)
-        - "uuid"  # $3: assigned_department_id (nullable)
+        - "uuid" # $1: id
+        - "uuid" # $2: assigned_user_id (nullable)
+        - "uuid" # $3: assigned_department_id (nullable)
       timeout_ms: 2000
       required_permission: "dispatch.update"
 
@@ -180,8 +180,8 @@ queries:
             status_state = 'DELIVERED', updated_at = now()
         WHERE id = $1
       params:
-        - "uuid"  # $1: id
-        - "uuid"  # $2: acknowledged_by_user_id
+        - "uuid" # $1: id
+        - "uuid" # $2: acknowledged_by_user_id
       timeout_ms: 2000
       required_permission: "dispatch.acknowledge"
 
@@ -191,9 +191,35 @@ queries:
         SET is_escalated = true, status_state = 'ESCALATED', updated_at = now()
         WHERE id = $1
       params:
-        - "uuid"  # $1: id
+        - "uuid" # $1: id
       timeout_ms: 2000
       required_permission: "dispatch.update"
+
+    list_inbox_unassigned:
+      statement: |
+        SELECT id, organization_id, tracking_number, direction, document_type_id,
+               sender_name, sender_organization,
+               recipient_name, recipient_organization, recipient_address,
+               assigned_user_id, assigned_department_id, submitted_by_user_id,
+               priority_level, status_state, subject_line, delivery_mode,
+               is_manually_routed, original_suggested_user_id,
+               overdue_at, acknowledged_at, acknowledged_by_user_id,
+               is_escalated, created_at, updated_at
+        FROM dispatches
+        WHERE assigned_department_id IS NULL
+          AND status_state = 'PENDING_ASSIGNMENT'
+        ORDER BY CASE priority_level
+                   WHEN 'IMMEDIATE' THEN 0
+                   WHEN 'PRIORITY'  THEN 1
+                   ELSE 2
+                 END,
+                 created_at ASC
+        LIMIT $1 OFFSET $2
+      params:
+        - "integer" # $1: limit
+        - "integer" # $2: offset
+      timeout_ms: 5000
+      required_permission: "dispatch.view"
 
     # Legacy placeholder kept for backwards compat with any existing references.
     fetch_active_inbox_by_department:
@@ -205,9 +231,9 @@ queries:
         ORDER BY created_at DESC
         LIMIT $2 OFFSET $3
       params:
-        - "uuid"     # $1: assigned_department_id
-        - "integer"  # $2: limit
-        - "integer"  # $3: offset
+        - "uuid" # $1: assigned_department_id
+        - "integer" # $2: limit
+        - "integer" # $3: offset
 
   # ══════════════════════════════════════════════════════════════════════════
   # PILLAR 1 — DISPATCH EVENTS (timeline log)
@@ -220,13 +246,13 @@ queries:
           target_user_id, target_department_id, metadata, created_at
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,now())
       params:
-        - "uuid"    # $1: id
-        - "uuid"    # $2: dispatch_id
+        - "uuid" # $1: id
+        - "uuid" # $2: dispatch_id
         - "varchar" # $3: event_type
-        - "uuid"    # $4: actor_user_id (nullable)
-        - "uuid"    # $5: target_user_id (nullable)
-        - "uuid"    # $6: target_department_id (nullable)
-        - "text"    # $7: metadata (nullable jsonb text)
+        - "uuid" # $4: actor_user_id (nullable)
+        - "uuid" # $5: target_user_id (nullable)
+        - "uuid" # $6: target_department_id (nullable)
+        - "text" # $7: metadata (nullable jsonb text)
       timeout_ms: 2000
       required_permission: "dispatch.view"
 
@@ -238,7 +264,7 @@ queries:
         WHERE dispatch_id = $1
         ORDER BY created_at ASC
       params:
-        - "uuid"  # $1: dispatch_id
+        - "uuid" # $1: dispatch_id
       timeout_ms: 3000
       required_permission: "dispatch.view"
 
@@ -272,7 +298,7 @@ queries:
         WHERE r.id = $1
         ORDER BY c.id, d.stop_order
       params:
-        - "uuid"  # $1: routing_rule id
+        - "uuid" # $1: routing_rule id
       timeout_ms: 3000
       required_permission: "admin.access"
 
@@ -295,7 +321,106 @@ queries:
         WHERE ms.dispatch_id = $1
         ORDER BY gn.sequence_order ASC
       params:
+        - "uuid" # $1: dispatch_id
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # PILLAR 2 — MINUTE SHEET CRUD
+  # ══════════════════════════════════════════════════════════════════════════
+  minute_sheet:
+    create:
+      statement: |
+        INSERT INTO minute_sheets (id, dispatch_id, created_at, updated_at)
+        VALUES ($1, $2, NOW(), NOW())
+        RETURNING id, dispatch_id, created_at, updated_at
+      params:
+        - "uuid"  # $1: id
+        - "uuid"  # $2: dispatch_id
+      timeout_ms: 3000
+      required_permission: "dispatch.create"
+
+    fetch_by_dispatch:
+      statement: |
+        SELECT id, dispatch_id, created_at, updated_at
+        FROM minute_sheets WHERE dispatch_id = $1
+      params:
         - "uuid"  # $1: dispatch_id
+      timeout_ms: 3000
+      required_permission: "dispatch.view"
+
+    fetch_by_id:
+      statement: |
+        SELECT id, dispatch_id, created_at, updated_at
+        FROM minute_sheets WHERE id = $1
+      params:
+        - "uuid"  # $1: id
+      timeout_ms: 3000
+      required_permission: "dispatch.view"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # PILLAR 2 — GREEN NOTE CRUD (INSERT-only; no UPDATE/DELETE ever)
+  # ══════════════════════════════════════════════════════════════════════════
+  green_note:
+    fetch_last_for_update:
+      statement: |
+        SELECT id, minute_sheet_id, sequence_order, author_officer_id,
+               content_body, cryptographic_hash, previous_hash,
+               is_signed, digital_signature, created_at
+        FROM green_notes
+        WHERE minute_sheet_id = $1
+        ORDER BY sequence_order DESC
+        LIMIT 1
+        FOR UPDATE
+      params:
+        - "uuid"  # $1: minute_sheet_id
+      timeout_ms: 3000
+      required_permission: "workflow.approve"
+
+    insert:
+      statement: |
+        INSERT INTO green_notes
+          (id, minute_sheet_id, sequence_order, author_officer_id,
+           content_body, cryptographic_hash, previous_hash,
+           is_signed, digital_signature, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        RETURNING id, minute_sheet_id, sequence_order, author_officer_id,
+                  content_body, cryptographic_hash, previous_hash,
+                  is_signed, digital_signature, created_at
+      params:
+        - "uuid"    # $1: id
+        - "uuid"    # $2: minute_sheet_id
+        - "integer" # $3: sequence_order
+        - "uuid"    # $4: author_officer_id
+        - "text"    # $5: content_body
+        - "varchar" # $6: cryptographic_hash
+        - "varchar" # $7: previous_hash
+        - "boolean" # $8: is_signed
+        - "text"    # $9: digital_signature (nullable)
+      timeout_ms: 3000
+      required_permission: "workflow.approve"
+
+    fetch_all:
+      statement: |
+        SELECT id, minute_sheet_id, sequence_order, author_officer_id,
+               content_body, cryptographic_hash, previous_hash,
+               is_signed, digital_signature, created_at
+        FROM green_notes
+        WHERE minute_sheet_id = $1
+        ORDER BY sequence_order ASC
+      params:
+        - "uuid"  # $1: minute_sheet_id
+      timeout_ms: 5000
+      required_permission: "workflow.view"
+
+    fetch_by_id:
+      statement: |
+        SELECT id, minute_sheet_id, sequence_order, author_officer_id,
+               content_body, cryptographic_hash, previous_hash,
+               is_signed, digital_signature, created_at
+        FROM green_notes WHERE id = $1
+      params:
+        - "uuid"  # $1: id
+      timeout_ms: 3000
+      required_permission: "workflow.view"
 
   # ══════════════════════════════════════════════════════════════════════════
   # AUTH — User lookup and session management

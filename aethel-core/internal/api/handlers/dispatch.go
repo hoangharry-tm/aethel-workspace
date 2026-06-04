@@ -1,16 +1,15 @@
 package handlers
 
 import (
+	"aethel-core/internal/domain"
+	"aethel-core/internal/rbac"
+	"aethel-core/internal/service"
 	"encoding/json"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-
-	"aethel-core/internal/domain"
-	"aethel-core/internal/rbac"
-	"aethel-core/internal/service"
 )
 
 type DispatchHandler struct {
@@ -185,6 +184,16 @@ func (h *DispatchHandler) ListMyDispatches(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, dispatches)
 }
 
+func (h *DispatchHandler) ListUnassigned(w http.ResponseWriter, r *http.Request) {
+	page := pageFromQuery(r)
+	dispatches, err := h.svc.ListUnassigned(r.Context(), page)
+	if err != nil {
+		writeError(w, "failed to list unassigned dispatches", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, dispatches)
+}
+
 func (h *DispatchHandler) GetTimeline(w http.ResponseWriter, r *http.Request) {
 	orgID, id := mustOrgAndID(r)
 
@@ -196,7 +205,7 @@ func (h *DispatchHandler) GetTimeline(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, events)
 }
 
-// Attachment placeholders — wired in Sprint 5.
+// ListAttachments returns all attachments for a dispatch (stub — wired in Sprint 5).
 func (h *DispatchHandler) ListAttachments(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, []any{})
 }

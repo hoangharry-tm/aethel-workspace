@@ -159,7 +159,7 @@ func TestAcknowledgeDelivery(t *testing.T) {
 	msRepo := &noopMSRepo{}
 	auditRepo := &noopAuditRepo{}
 
-	_ = service.NewDispatchService(dispatchRepo, eventRepo, routingRepo, msRepo, auditRepo)
+	_ = service.NewDispatchService(dispatchRepo, eventRepo, routingRepo, msRepo, auditRepo, db)
 
 	d := &domain.Dispatch{
 		ID:                uuid.New(),
@@ -283,7 +283,7 @@ func TestRoutingRuleEngine(t *testing.T) {
 	dispatchRepo := repos.NewDispatchRepo(db, reg)
 	eventRepo := repos.NewDispatchEventRepo(db, reg)
 	routingRepo := repos.NewRoutingRuleRepo(db, reg)
-	svc := service.NewDispatchService(dispatchRepo, eventRepo, routingRepo, &noopMSRepo{}, &noopAuditRepo{})
+	svc := service.NewDispatchService(dispatchRepo, eventRepo, routingRepo, &noopMSRepo{}, &noopAuditRepo{}, db)
 
 	created, err := svc.Create(context.Background(), &service.Dispatch{
 		Direction:      "INBOUND",
@@ -312,6 +312,75 @@ func TestRoutingRuleEngine(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("expected ROUTING_APPLIED event in dispatch_events, got %d events", len(events))
+	}
+}
+
+// TestCreateDispatch_NoRuleMatch verifies that when no routing rules exist the dispatch
+// remains PENDING_ASSIGNMENT with no department assigned.
+func TestCreateDispatch_NoRuleMatch(t *testing.T) {
+	db := openTestDB(t)
+	reg := buildRegistry(t, db)
+	orgID := seedOrg(t, db)
+	dtID := seedDocType(t, db, orgID)
+	userID := seedUser(t, db, orgID)
+
+	// Delete all routing rules so no rule can match.
+	_, err := db.ExecContext(context.Background(),
+		`DELETE FROM routing_rule_conditions WHERE routing_rule_id IN (SELECT id FROM routing_rules WHERE organization_id = $1)`,
+		orgID,
+	)
+	if err != nil {
+		t.Fatalf("delete routing rule conditions: %v", err)
+	}
+	_, err = db.ExecContext(context.Background(),
+		`DELETE FROM routing_rule_destinations WHERE routing_rule_id IN (SELECT id FROM routing_rules WHERE organization_id = $1)`,
+		orgID,
+	)
+	if err != nil {
+		t.Fatalf("delete routing rule destinations: %v", err)
+	}
+	_, err = db.ExecContext(context.Background(),
+		`DELETE FROM routing_rules WHERE organization_id = $1`, orgID,
+	)
+	if err != nil {
+		t.Fatalf("delete routing rules: %v", err)
+	}
+
+	dispatchRepo := repos.NewDispatchRepo(db, reg)
+	eventRepo := repos.NewDispatchEventRepo(db, reg)
+	routingRepo := repos.NewRoutingRuleRepo(db, reg)
+	svc := service.NewDispatchService(dispatchRepo, eventRepo, routingRepo, &noopMSRepo{}, &noopAuditRepo{}, db)
+
+	created, err := svc.Create(context.Background(), &service.Dispatch{
+		Direction:      "INBOUND",
+		DocumentTypeID: dtID,
+		SenderName:     "No-Rule Test Sender",
+		PriorityLevel:  "ROUTINE",
+	}, userID, orgID, "127.0.0.1")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if created.StatusState != domain.StatusPendingAssignment {
+		t.Errorf("status: want PENDING_ASSIGNMENT, got %v", created.StatusState)
+	}
+	if created.AssignedDepartmentID != nil {
+		t.Errorf("assigned_department_id: want nil, got %v", created.AssignedDepartmentID)
+	}
+
+	// Verify DISPATCH_CREATED event (not ROUTING_APPLIED) was logged.
+	events, err := eventRepo.ListByDispatch(context.Background(), orgID, created.ID)
+	if err != nil {
+		t.Fatalf("ListByDispatch: %v", err)
+	}
+	var found bool
+	for _, e := range events {
+		if e.EventType == "DISPATCH_CREATED" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected DISPATCH_CREATED event in dispatch_events, got %d events", len(events))
 	}
 }
 

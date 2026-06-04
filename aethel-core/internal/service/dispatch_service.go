@@ -2,20 +2,24 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
+	"aethel-core/internal/app"
 	"aethel-core/internal/domain"
 )
 
 type DispatchService struct {
-	dispatches     domain.DispatchRepository
-	events         domain.DispatchEventRepository
-	routingRules   domain.RoutingRuleRepository
-	minuteSheets   domain.MinuteSheetRepository
-	audit          domain.AuditRepository
+	dispatches   domain.DispatchRepository
+	events       domain.DispatchEventRepository
+	routingRules domain.RoutingRuleRepository
+	minuteSheets domain.MinuteSheetRepository
+	audit        domain.AuditRepository
+	db           *sql.DB // for transactional Create
 }
 
 func NewDispatchService(
@@ -24,6 +28,7 @@ func NewDispatchService(
 	routingRules domain.RoutingRuleRepository,
 	minuteSheets domain.MinuteSheetRepository,
 	audit domain.AuditRepository,
+	db *sql.DB,
 ) *DispatchService {
 	return &DispatchService{
 		dispatches:   dispatches,
@@ -31,29 +36,30 @@ func NewDispatchService(
 		routingRules: routingRules,
 		minuteSheets: minuteSheets,
 		audit:        audit,
+		db:           db,
 	}
 }
 
-func (s *DispatchService) Create(ctx context.Context, d *Dispatch, submitterID, orgID uuid.UUID, ip string) (*domain.Dispatch, error) {
-	dispatch := &domain.Dispatch{
-		ID:                   uuid.New(),
-		OrganizationID:       orgID,
-		TrackingNumber:       generateTrackingNumber(),
-		Direction:            domain.DispatchDirection(d.Direction),
-		DocumentTypeID:       d.DocumentTypeID,
-		SenderName:           d.SenderName,
-		SenderOrganization:   d.SenderOrganization,
-		RecipientName:        d.RecipientName,
+func (s *DispatchService) Create(ctx context.Context, d *Dispatch, submitterID, orgID uuid.UUID, ip string) (dispatch *domain.Dispatch, err error) {
+	dispatch = &domain.Dispatch{
+		ID:                    uuid.New(),
+		OrganizationID:        orgID,
+		TrackingNumber:        generateTrackingNumber(),
+		Direction:             domain.DispatchDirection(d.Direction),
+		DocumentTypeID:        d.DocumentTypeID,
+		SenderName:            d.SenderName,
+		SenderOrganization:    d.SenderOrganization,
+		RecipientName:         d.RecipientName,
 		RecipientOrganization: d.RecipientOrganization,
-		RecipientAddress:     d.RecipientAddress,
-		SubmittedByUserID:    submitterID,
-		PriorityLevel:        domain.PriorityLevel(d.PriorityLevel),
-		StatusState:          domain.StatusPendingAssignment,
-		SubjectLine:          d.SubjectLine,
-		DeliveryMode:         d.DeliveryMode,
+		RecipientAddress:      d.RecipientAddress,
+		SubmittedByUserID:     submitterID,
+		PriorityLevel:         domain.PriorityLevel(d.PriorityLevel),
+		StatusState:           domain.StatusPendingAssignment,
+		SubjectLine:           d.SubjectLine,
+		DeliveryMode:          d.DeliveryMode,
 	}
 
-	// Evaluate routing rules.
+	// Evaluate routing rules — read-only, safe outside the transaction.
 	rules, err := s.routingRules.List(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("load routing rules: %w", err)
@@ -64,24 +70,55 @@ func (s *DispatchService) Create(ctx context.Context, d *Dispatch, submitterID, 
 		dispatch.AssignedUserID = dest.UserID
 	}
 
-	if err := s.dispatches.Create(ctx, dispatch); err != nil {
-		return nil, fmt.Errorf("create dispatch: %w", err)
+	// Transactional writes: dispatch + minute sheet must succeed or fail together.
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	// Insert dispatch directly via tx (prepared stmts cannot be reused across connections).
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO dispatches (
+			id, organization_id, tracking_number, direction, document_type_id,
+			sender_name, sender_organization,
+			recipient_name, recipient_organization, recipient_address,
+			submitted_by_user_id, priority_level, status_state,
+			subject_line, delivery_mode,
+			is_manually_routed, is_escalated, created_at, updated_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,false,false,now(),now())
+	`,
+		dispatch.ID, dispatch.OrganizationID, dispatch.TrackingNumber,
+		string(dispatch.Direction), dispatch.DocumentTypeID,
+		dispatch.SenderName, dispatch.SenderOrganization,
+		dispatch.RecipientName, dispatch.RecipientOrganization, dispatch.RecipientAddress,
+		dispatch.SubmittedByUserID, string(dispatch.PriorityLevel), string(dispatch.StatusState),
+		dispatch.SubjectLine, dispatch.DeliveryMode,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("insert dispatch: %w", err)
 	}
 
-	// Auto-create the minute sheet for every inbound dispatch.
+	// Auto-create the minute sheet for every inbound dispatch inside the same tx.
 	if dispatch.Direction == domain.DirectionInbound {
-		ms := &domain.MinuteSheet{
-			ID:             uuid.New(),
-			OrganizationID: orgID,
-			DispatchID:     dispatch.ID,
-			Status:         domain.MinuteSheetOpen,
-		}
-		if err := s.minuteSheets.Create(ctx, ms); err != nil {
-			return nil, fmt.Errorf("create minute sheet: %w", err)
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO minute_sheets (id, dispatch_id, created_at, updated_at)
+			VALUES ($1, $2, now(), now())
+		`, uuid.New(), dispatch.ID)
+		if err != nil {
+			return nil, fmt.Errorf("insert minute sheet: %w", err)
 		}
 	}
 
-	// Append routing event.
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit transaction: %w", err)
+	}
+
+	// Post-commit: append event and audit entry (non-critical — failures logged, not returned).
 	eventType := "DISPATCH_CREATED"
 	if dispatch.AssignedDepartmentID != nil || dispatch.AssignedUserID != nil {
 		eventType = "ROUTING_APPLIED"
@@ -95,7 +132,6 @@ func (s *DispatchService) Create(ctx context.Context, d *Dispatch, submitterID, 
 		ToDeptID:       dispatch.AssignedDepartmentID,
 		ToUserID:       dispatch.AssignedUserID,
 	})
-
 	_ = s.audit.Write(ctx, &domain.AuditEntry{
 		OrganizationID:   orgID,
 		ActorUserID:      &submitterID,
@@ -105,6 +141,10 @@ func (s *DispatchService) Create(ctx context.Context, d *Dispatch, submitterID, 
 	})
 
 	return dispatch, nil
+}
+
+func (s *DispatchService) ListUnassigned(ctx context.Context, page domain.Page) ([]domain.Dispatch, error) {
+	return s.dispatches.ListUnassigned(ctx, app.OrgID, page)
 }
 
 func (s *DispatchService) GetByID(ctx context.Context, orgID, id uuid.UUID) (*domain.Dispatch, error) {
@@ -208,14 +248,15 @@ func (s *DispatchService) ruleMatches(d *domain.Dispatch, conditions []domain.Ru
 
 func conditionMatch(d *domain.Dispatch, c domain.RuleCondition) bool {
 	var fieldValue string
+	// FieldName is stored in the DB as the raw condition_type enum value (uppercase).
 	switch c.FieldName {
-	case "document_type_id":
+	case "DOCUMENT_TYPE", "document_type_id":
 		fieldValue = d.DocumentTypeID.String()
-	case "priority_level":
+	case "PRIORITY_LEVEL", "priority_level":
 		fieldValue = string(d.PriorityLevel)
-	case "direction":
+	case "DIRECTION", "direction":
 		fieldValue = string(d.Direction)
-	case "sender_organization":
+	case "SENDER_ORGANIZATION", "sender_organization":
 		if d.SenderOrganization != nil {
 			fieldValue = *d.SenderOrganization
 		}
@@ -224,8 +265,10 @@ func conditionMatch(d *domain.Dispatch, c domain.RuleCondition) bool {
 	}
 
 	switch c.Operator {
-	case "eq", "=":
+	case "EQUALS", "eq", "=":
 		return fieldValue == c.MatchValue
+	case "CONTAINS":
+		return strings.Contains(fieldValue, c.MatchValue)
 	case "neq", "!=":
 		return fieldValue != c.MatchValue
 	default:

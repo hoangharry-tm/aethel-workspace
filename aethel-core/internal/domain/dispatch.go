@@ -122,6 +122,7 @@ type DispatchRepository interface {
 	ListInbox(ctx context.Context, orgID, deptID uuid.UUID, page Page) ([]Dispatch, error)
 	ListOutbound(ctx context.Context, orgID uuid.UUID, page Page) ([]Dispatch, error)
 	ListByUser(ctx context.Context, orgID, userID uuid.UUID, page Page) ([]Dispatch, error)
+	ListUnassigned(ctx context.Context, orgID uuid.UUID, page Page) ([]Dispatch, error)
 	Create(ctx context.Context, d *Dispatch) error
 	UpdateStatus(ctx context.Context, orgID, id uuid.UUID, status DispatchStatus) error
 	Assign(ctx context.Context, orgID, id uuid.UUID, userID, deptID *uuid.UUID) error

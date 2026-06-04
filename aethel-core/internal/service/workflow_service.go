@@ -98,7 +98,16 @@ func (s *WorkflowService) AppendGreenNote(
 }
 
 func (s *WorkflowService) ApproveMinuteSheet(ctx context.Context, orgID, minuteSheetID, approverID uuid.UUID) error {
-	return s.minuteSheets.Approve(ctx, orgID, minuteSheetID, approverID)
+	if err := s.minuteSheets.Approve(ctx, orgID, minuteSheetID, approverID); err != nil {
+		return err
+	}
+	_ = s.audit.Write(ctx, &domain.AuditEntry{
+		OrganizationID:   orgID,
+		ActorUserID:      &approverID,
+		ActionEventType:  domain.AuditMinuteSheetApproved,
+		TargetResourceID: &minuteSheetID,
+	})
+	return nil
 }
 
 // computeNoteHash computes SHA-256(content || sequence || authorID || prevHash).

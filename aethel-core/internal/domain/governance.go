@@ -22,6 +22,7 @@ const (
 	AuditDispatchAssigned           AuditEventType = "DISPATCH_ASSIGNED"
 	AuditDispatchDelivered          AuditEventType = "DISPATCH_DELIVERED"
 	AuditGreenNoteAppended          AuditEventType = "GREEN_NOTE_APPENDED"
+	AuditMinuteSheetApproved        AuditEventType = "MINUTE_SHEET_APPROVED"
 	AuditAdminUserCreated           AuditEventType = "ADMIN_USER_CREATED"
 	AuditAdminUserDeactivated       AuditEventType = "ADMIN_USER_DEACTIVATED"
 	AuditAdminSettingsChanged       AuditEventType = "ADMIN_SETTINGS_CHANGED"

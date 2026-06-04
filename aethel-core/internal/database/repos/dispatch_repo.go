@@ -79,6 +79,15 @@ func (r *DispatchRepo) ListByUser(ctx context.Context, _ uuid.UUID, userID uuid.
 	return scanDispatches(rows)
 }
 
+func (r *DispatchRepo) ListUnassigned(ctx context.Context, _ uuid.UUID, page domain.Page) ([]domain.Dispatch, error) {
+	rows, err := r.q.Get("dispatch.list_inbox_unassigned").Stmt.QueryContext(ctx, page.Limit, page.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanDispatches(rows)
+}
+
 func (r *DispatchRepo) UpdateStatus(ctx context.Context, _ uuid.UUID, id uuid.UUID, status domain.DispatchStatus) error {
 	_, err := r.q.Get("dispatch.update_status").Stmt.ExecContext(ctx, id, string(status))
 	return err

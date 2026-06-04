@@ -123,12 +123,12 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/LoginRequest' }
+            schema: { $ref: "#/components/schemas/LoginRequest" }
             example:
               email: "marcus.webb@ministry.gov"
               password: "S3cur3P@ssw0rd!"
       responses:
-        '200':
+        "200":
           description: Login successful
           headers:
             Set-Cookie:
@@ -142,22 +142,23 @@ paths:
                 properties:
                   access_token: { type: string }
                   token_type: { type: string, enum: [Bearer] }
-                  expires_in: { type: integer, description: Seconds until expiry }
-                  role: { $ref: '#/components/schemas/UserRole' }
+                  expires_in:
+                    { type: integer, description: Seconds until expiry }
+                  role: { $ref: "#/components/schemas/UserRole" }
               example:
                 access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4ZjNhMTJiYy0..."
                 token_type: Bearer
                 expires_in: 900
                 role: RECEPTION
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401':
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401":
           description: Invalid email or password (same response whether email exists or not)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+              schema: { $ref: "#/components/schemas/Error" }
               example: { error: "invalid credentials" }
-        '423': { $ref: '#/components/responses/Locked' }
-        '429': { $ref: '#/components/responses/TooManyRequests' }
+        "423": { $ref: "#/components/responses/Locked" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /auth/refresh:
     post:
@@ -170,7 +171,7 @@ paths:
         No request body required — the cookie is sent automatically by the browser.
       security: []
       responses:
-        '200':
+        "200":
           description: New access token issued
           headers:
             Set-Cookie:
@@ -187,7 +188,7 @@ paths:
               example:
                 access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 expires_in: 900
-        '401': { $ref: '#/components/responses/Unauthorized' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /auth/logout:
     post:
@@ -198,9 +199,9 @@ paths:
         Invalidates the current refresh token and clears both cookies.
         The access token remains valid until its natural expiry (15 min max).
       responses:
-        '204':
+        "204":
           description: Session revoked successfully
-        '401': { $ref: '#/components/responses/Unauthorized' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /auth/password-reset/request:
     post:
@@ -223,9 +224,9 @@ paths:
             example:
               email: "marcus.webb@ministry.gov"
       responses:
-        '202':
+        "202":
           description: Request accepted (email sent if account exists)
-        '429': { $ref: '#/components/responses/TooManyRequests' }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /auth/password-reset/confirm:
     post:
@@ -240,19 +241,19 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/PasswordResetConfirmRequest' }
+            schema: { $ref: "#/components/schemas/PasswordResetConfirmRequest" }
             example:
               token: "abc123xyz..."
               newPassword: "N3wS3cur3P@ss!"
       responses:
-        '204':
+        "204":
           description: Password reset successfully
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401':
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401":
           description: Invalid or expired reset token
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+              schema: { $ref: "#/components/schemas/Error" }
               example: { error: "invalid or expired token" }
 
   # ── Config ────────────────────────────────────────────────────────────────────
@@ -267,11 +268,11 @@ paths:
         and org profile — from the in-memory config cache (5-min TTL).
         This is the primary endpoint for the Nuxt SSR frontend on page load.
       responses:
-        '200':
+        "200":
           description: Full runtime configuration
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/AppConfig' }
+              schema: { $ref: "#/components/schemas/AppConfig" }
               example:
                 branding:
                   primaryColor: "#4f46e5"
@@ -296,7 +297,7 @@ paths:
                   timezone: "Asia/Ho_Chi_Minh"
                   locale: "vi-VN"
                   contactEmail: "admin@ministry.gov.vn"
-        '401': { $ref: '#/components/responses/Unauthorized' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /config/branding:
     get:
@@ -305,12 +306,12 @@ paths:
       summary: Get branding configuration
       description: Returns only the branding sub-object from the config cache.
       responses:
-        '200':
+        "200":
           description: Branding configuration
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BrandingConfig' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+              schema: { $ref: "#/components/schemas/BrandingConfig" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /config/nav:
     get:
@@ -319,14 +320,14 @@ paths:
       summary: Get navigation structure
       description: Returns the nav groups and items. Includes any runtime overrides stored in system_settings.
       responses:
-        '200':
+        "200":
           description: Navigation structure
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/NavGroup' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+                items: { $ref: "#/components/schemas/NavGroup" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /config/features:
     get:
@@ -335,12 +336,12 @@ paths:
       summary: Get feature flags
       description: Returns the feature flags configuration object.
       responses:
-        '200':
+        "200":
           description: Feature flags
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/FeatureFlags' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+              schema: { $ref: "#/components/schemas/FeatureFlags" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /admin/config/branding:
     patch:
@@ -355,19 +356,19 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/PatchBrandingRequest' }
+            schema: { $ref: "#/components/schemas/PatchBrandingRequest" }
             example:
               primaryColor: "#0ea5e9"
               wordmark: "Ministry E-Office"
       responses:
-        '200':
+        "200":
           description: Updated branding configuration
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BrandingConfig' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+              schema: { $ref: "#/components/schemas/BrandingConfig" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /admin/config/nav:
     patch:
@@ -382,18 +383,18 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/PatchNavRequest' }
+            schema: { $ref: "#/components/schemas/PatchNavRequest" }
       responses:
-        '200':
+        "200":
           description: Updated navigation structure
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/NavGroup' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+                items: { $ref: "#/components/schemas/NavGroup" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /admin/config/features:
     patch:
@@ -407,18 +408,18 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/PatchFeaturesRequest' }
+            schema: { $ref: "#/components/schemas/PatchFeaturesRequest" }
             example:
               greenNotingEnabled: true
       responses:
-        '200':
+        "200":
           description: Updated feature flags
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/FeatureFlags' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+              schema: { $ref: "#/components/schemas/FeatureFlags" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /admin/config/org:
     patch:
@@ -432,19 +433,19 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/PatchOrgRequest' }
+            schema: { $ref: "#/components/schemas/PatchOrgRequest" }
             example:
               name: "Ministry of Internal Affairs"
               timezone: "Asia/Ho_Chi_Minh"
       responses:
-        '200':
+        "200":
           description: Updated org profile
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/OrgProfile' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+              schema: { $ref: "#/components/schemas/OrgProfile" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   # ── Dispatch ──────────────────────────────────────────────────────────────────
 
@@ -455,21 +456,21 @@ paths:
       summary: List inbound dispatch queue
       description: Returns the active inbound queue for the current user's department. Paginated.
       parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
       responses:
-        '200':
+        "200":
           description: Paginated list of inbound dispatches
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - $ref: "#/components/schemas/PaginatedResponse"
                   - type: object
                     properties:
                       data:
                         type: array
-                        items: { $ref: '#/components/schemas/DispatchSummary' }
+                        items: { $ref: "#/components/schemas/DispatchSummary" }
               example:
                 data:
                   - id: "8f3a12bc-1234-5678-abcd-000000000001"
@@ -482,8 +483,8 @@ paths:
                 total: 42
                 page: 1
                 pageSize: 20
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
     post:
       tags: [Dispatch]
@@ -494,18 +495,18 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreateDispatchRequest' }
+            schema: { $ref: "#/components/schemas/CreateDispatchRequest" }
       responses:
-        '201':
+        "201":
           description: Dispatch created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Dispatch' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/UnprocessableEntity' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/Dispatch" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /dispatches/outbound:
     get:
@@ -514,23 +515,23 @@ paths:
       summary: List outbound dispatch queue
       description: Returns the outbound queue for the current organization. Paginated.
       parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
       responses:
-        '200':
+        "200":
           description: Paginated list of outbound dispatches
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - $ref: "#/components/schemas/PaginatedResponse"
                   - type: object
                     properties:
                       data:
                         type: array
-                        items: { $ref: '#/components/schemas/DispatchSummary' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+                        items: { $ref: "#/components/schemas/DispatchSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
     post:
       tags: [Dispatch]
@@ -541,18 +542,18 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreateDispatchRequest' }
+            schema: { $ref: "#/components/schemas/CreateDispatchRequest" }
       responses:
-        '201':
+        "201":
           description: Outbound dispatch created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Dispatch' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/UnprocessableEntity' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/Dispatch" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /my-dispatches:
     get:
@@ -561,22 +562,22 @@ paths:
       summary: List dispatches assigned to me
       description: Returns all dispatches currently assigned to the authenticated user.
       parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
       responses:
-        '200':
+        "200":
           description: Paginated list of the user's assigned dispatches
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - $ref: "#/components/schemas/PaginatedResponse"
                   - type: object
                     properties:
                       data:
                         type: array
-                        items: { $ref: '#/components/schemas/DispatchSummary' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+                        items: { $ref: "#/components/schemas/DispatchSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /search:
     get:
@@ -592,23 +593,23 @@ paths:
           required: true
           schema: { type: string, minLength: 2 }
           description: Search query string
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
       responses:
-        '200':
+        "200":
           description: Search results
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - $ref: "#/components/schemas/PaginatedResponse"
                   - type: object
                     properties:
                       data:
                         type: array
-                        items: { $ref: '#/components/schemas/DispatchSummary' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+                        items: { $ref: "#/components/schemas/DispatchSummary" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /dispatches/{id}:
     get:
@@ -617,16 +618,16 @@ paths:
       summary: Get dispatch detail
       description: Returns the full dispatch record including the event timeline.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       responses:
-        '200':
+        "200":
           description: Full dispatch detail
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Dispatch' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: { $ref: "#/components/schemas/Dispatch" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /dispatches/{id}/status:
     patch:
@@ -635,7 +636,7 @@ paths:
       summary: Update dispatch status
       description: Transitions the dispatch to a new status state. Logs a dispatch event.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       requestBody:
         required: true
         content:
@@ -644,19 +645,19 @@ paths:
               type: object
               required: [status]
               properties:
-                status: { $ref: '#/components/schemas/DispatchStatus' }
+                status: { $ref: "#/components/schemas/DispatchStatus" }
             example:
               status: IN_TRANSIT
       responses:
-        '200':
+        "200":
           description: Status updated
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Dispatch' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: { $ref: "#/components/schemas/Dispatch" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /dispatches/{id}/assign:
     post:
@@ -667,25 +668,25 @@ paths:
         Manually assigns the dispatch to a specific user or department.
         Sets `isManuallyRouted = true`, bypassing the automatic routing rules.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/AssignDispatchRequest' }
+            schema: { $ref: "#/components/schemas/AssignDispatchRequest" }
             example:
               userId: "8f3a12bc-1234-5678-abcd-000000000042"
               isManualOverride: true
       responses:
-        '200':
+        "200":
           description: Dispatch assigned
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Dispatch' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: { $ref: "#/components/schemas/Dispatch" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /dispatches/{id}/acknowledge:
     post:
@@ -696,16 +697,16 @@ paths:
         Records that the recipient has acknowledged receipt of the dispatch.
         Sets `acknowledgedAt` and `acknowledgedByUserId` on the dispatch record.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       responses:
-        '200':
+        "200":
           description: Acknowledgement recorded
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Dispatch' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: { $ref: "#/components/schemas/Dispatch" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /dispatches/{id}/attachments:
     get:
@@ -714,18 +715,18 @@ paths:
       summary: List file attachments
       description: Returns all file attachments associated with the dispatch.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       responses:
-        '200':
+        "200":
           description: List of attachments
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/Attachment' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+                items: { $ref: "#/components/schemas/Attachment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
     post:
       tags: [Dispatch]
@@ -733,7 +734,7 @@ paths:
       summary: Upload a file attachment
       description: Uploads a file and attaches it to the dispatch. Supports multipart/form-data.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       requestBody:
         required: true
         content:
@@ -750,15 +751,15 @@ paths:
                   type: string
                   description: Optional description of the attachment
       responses:
-        '201':
+        "201":
           description: Attachment uploaded
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Attachment' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: { $ref: "#/components/schemas/Attachment" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /dispatches/{id}/attachments/{att_id}:
     delete:
@@ -767,14 +768,14 @@ paths:
       summary: Remove a file attachment
       description: Permanently deletes the specified attachment from the dispatch.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
-        - $ref: '#/components/parameters/AttachmentID'
+        - $ref: "#/components/parameters/ResourceID"
+        - $ref: "#/components/parameters/AttachmentID"
       responses:
-        '204':
+        "204":
           description: Attachment deleted
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ── Workflow ──────────────────────────────────────────────────────────────────
 
@@ -787,13 +788,13 @@ paths:
         Returns the minute sheet for the dispatch along with the full ordered list
         of green notes. Use this as the primary view for the Green Noting Canvas.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       responses:
-        '200':
+        "200":
           description: Minute sheet with embedded green notes
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/MinuteSheet' }
+              schema: { $ref: "#/components/schemas/MinuteSheet" }
               example:
                 id: "ms-uuid-0001"
                 organizationId: "org-uuid-0001"
@@ -804,9 +805,9 @@ paths:
                 createdAt: "2026-06-01T08:00:00Z"
                 updatedAt: "2026-06-01T10:00:00Z"
                 notes: []
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /dispatches/{id}/green-notes:
     get:
@@ -815,18 +816,18 @@ paths:
       summary: List green notes in sequence order
       description: Returns all green notes for the dispatch's minute sheet, ordered by sequenceOrder ascending.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       responses:
-        '200':
+        "200":
           description: Ordered list of green notes
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/GreenNote' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+                items: { $ref: "#/components/schemas/GreenNote" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
     post:
       tags: [Workflow]
@@ -842,32 +843,35 @@ paths:
 
         Notes are **immutable after insert**. There is no update or delete endpoint.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/AppendGreenNoteRequest' }
+            schema: { $ref: "#/components/schemas/AppendGreenNoteRequest" }
             example:
               contentBody: "Document reviewed. No issues found. Forwarding to department head for approval."
               previousHash: "a3f8c2d1e5b6f7a8..."
       responses:
-        '201':
+        "201":
           description: Green note appended successfully
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/GreenNote' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409':
+              schema: { $ref: "#/components/schemas/GreenNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
           description: Hash chain mismatch — previousHash does not match the last note
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "hash chain broken: previousHash does not match last note" }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                {
+                  error: "hash chain broken: previousHash does not match last note",
+                }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /dispatches/{id}/minute-sheet/approve:
     post:
@@ -878,21 +882,21 @@ paths:
         Marks the minute sheet as approved. Sets `approvedById` and `approvedAt`.
         Once approved, the minute sheet is closed — no further green notes can be appended.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       responses:
-        '200':
+        "200":
           description: Minute sheet approved
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/MinuteSheet' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409':
+              schema: { $ref: "#/components/schemas/MinuteSheet" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
           description: Minute sheet is already approved or rejected
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+              schema: { $ref: "#/components/schemas/Error" }
               example: { error: "minute sheet is already approved" }
 
   # ── Governance ────────────────────────────────────────────────────────────────
@@ -906,29 +910,29 @@ paths:
         Returns audit log entries filtered by date range. Results are paginated and ordered
         by `createdAt` descending. Requires `SYS_ADMIN` role.
       parameters:
-        - $ref: '#/components/parameters/DateFrom'
-        - $ref: '#/components/parameters/DateTo'
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
         - name: eventType
           in: query
-          schema: { $ref: '#/components/schemas/AuditEventType' }
+          schema: { $ref: "#/components/schemas/AuditEventType" }
           description: Filter by specific event type
       responses:
-        '200':
+        "200":
           description: Paginated audit entries
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - $ref: "#/components/schemas/PaginatedResponse"
                   - type: object
                     properties:
                       data:
                         type: array
-                        items: { $ref: '#/components/schemas/AuditEntry' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+                        items: { $ref: "#/components/schemas/AuditEntry" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /audit-log/verify:
     get:
@@ -941,21 +945,21 @@ paths:
         Returns a detailed result including any broken links found.
         Requires `SYS_ADMIN` role.
       parameters:
-        - $ref: '#/components/parameters/DateFrom'
-        - $ref: '#/components/parameters/DateTo'
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
       responses:
-        '200':
+        "200":
           description: Chain verification result
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ChainVerificationResult' }
+              schema: { $ref: "#/components/schemas/ChainVerificationResult" }
               example:
                 valid: true
                 totalRows: 1482
                 brokenAt: []
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   # ── Admin — Users ─────────────────────────────────────────────────────────────
 
@@ -966,23 +970,23 @@ paths:
       summary: List all users
       description: Returns all user accounts in the organization. Requires ADMIN role.
       parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
       responses:
-        '200':
+        "200":
           description: Paginated user list
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - $ref: "#/components/schemas/PaginatedResponse"
                   - type: object
                     properties:
                       data:
                         type: array
-                        items: { $ref: '#/components/schemas/UserSummary' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+                        items: { $ref: "#/components/schemas/UserSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
     post:
       tags: [Admin]
@@ -993,7 +997,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreateUserRequest' }
+            schema: { $ref: "#/components/schemas/CreateUserRequest" }
             example:
               email: "priya.sharma@ministry.gov"
               fullName: "Priya Sharma"
@@ -1001,15 +1005,15 @@ paths:
               departmentId: "dept-uuid-0001"
               password: "T3mp@Pass123!"
       responses:
-        '201':
+        "201":
           description: User created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/User' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+              schema: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
 
   /admin/users/{id}:
     get:
@@ -1018,16 +1022,16 @@ paths:
       summary: Get user detail
       description: Returns the full user record. Requires ADMIN role.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       responses:
-        '200':
+        "200":
           description: User detail
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/User' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
     patch:
       tags: [Admin]
@@ -1035,7 +1039,7 @@ paths:
       summary: Update user profile or role
       description: Partially updates a user. All fields are optional. Requires ADMIN role.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       requestBody:
         required: true
         content:
@@ -1044,7 +1048,7 @@ paths:
               type: object
               properties:
                 fullName: { type: string }
-                role: { $ref: '#/components/schemas/UserRole' }
+                role: { $ref: "#/components/schemas/UserRole" }
                 departmentId:
                   type: string
                   format: uuid
@@ -1053,15 +1057,15 @@ paths:
                   type: string
                   nullable: true
       responses:
-        '200':
+        "200":
           description: Updated user
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/User' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
     delete:
       tags: [Admin]
@@ -1072,13 +1076,13 @@ paths:
         Existing sessions are revoked. This is a soft delete — the user record is preserved
         for audit trail integrity. Requires ADMIN role.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       responses:
-        '204':
+        "204":
           description: User deactivated
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ── Admin — Document Types ─────────────────────────────────────────────────────
 
@@ -1089,15 +1093,15 @@ paths:
       summary: List document type catalogue
       description: Returns all document types for the organization. Requires ADMIN role.
       responses:
-        '200':
+        "200":
           description: Document type list
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/DocumentType' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+                items: { $ref: "#/components/schemas/DocumentType" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
     post:
       tags: [Admin]
@@ -1122,14 +1126,14 @@ paths:
               description: "Formal correspondence between government entities"
               isActive: true
       responses:
-        '201':
+        "201":
           description: Document type created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/DocumentType' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+              schema: { $ref: "#/components/schemas/DocumentType" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /admin/document-types/{id}:
     patch:
@@ -1138,7 +1142,7 @@ paths:
       summary: Update a document type
       description: Partially updates a document type. Requires ADMIN role.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       requestBody:
         required: true
         content:
@@ -1150,15 +1154,15 @@ paths:
                 description: { type: string, nullable: true }
                 isActive: { type: boolean }
       responses:
-        '200':
+        "200":
           description: Updated document type
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/DocumentType' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: { $ref: "#/components/schemas/DocumentType" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
     delete:
       tags: [Admin]
@@ -1166,19 +1170,20 @@ paths:
       summary: Delete a document type
       description: Removes a document type. Fails if dispatches reference it. Requires ADMIN role.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       responses:
-        '204':
+        "204":
           description: Document type deleted
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409':
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
           description: Document type is referenced by existing dispatches
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "document type is in use and cannot be deleted" }
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                { error: "document type is in use and cannot be deleted" }
 
   # ── Admin — Routing Rules ──────────────────────────────────────────────────────
 
@@ -1189,15 +1194,15 @@ paths:
       summary: List routing rules in priority order
       description: Returns all routing rules ordered by priorityOrder ascending. Requires ADMIN role.
       responses:
-        '200':
+        "200":
           description: Routing rules list
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/RoutingRule' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+                items: { $ref: "#/components/schemas/RoutingRule" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
     post:
       tags: [Admin]
@@ -1208,16 +1213,16 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreateRoutingRuleRequest' }
+            schema: { $ref: "#/components/schemas/CreateRoutingRuleRequest" }
       responses:
-        '201':
+        "201":
           description: Routing rule created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RoutingRule' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+              schema: { $ref: "#/components/schemas/RoutingRule" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /admin/routing-rules/{id}:
     put:
@@ -1226,22 +1231,22 @@ paths:
       summary: Update a routing rule
       description: Replaces the routing rule (full update including conditions and destinations). Requires ADMIN role.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreateRoutingRuleRequest' }
+            schema: { $ref: "#/components/schemas/CreateRoutingRuleRequest" }
       responses:
-        '200':
+        "200":
           description: Updated routing rule
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RoutingRule' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: { $ref: "#/components/schemas/RoutingRule" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
     delete:
       tags: [Admin]
@@ -1249,13 +1254,13 @@ paths:
       summary: Delete a routing rule
       description: Removes the routing rule. Requires ADMIN role.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       responses:
-        '204':
+        "204":
           description: Routing rule deleted
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ── Admin — Escalation Rules ───────────────────────────────────────────────────
 
@@ -1266,15 +1271,15 @@ paths:
       summary: List escalation rules
       description: Returns all escalation rules for the organization. Requires ADMIN role.
       responses:
-        '200':
+        "200":
           description: Escalation rules list
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/EscalationRule' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+                items: { $ref: "#/components/schemas/EscalationRule" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
     post:
       tags: [Admin]
@@ -1285,16 +1290,16 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreateEscalationRuleRequest' }
+            schema: { $ref: "#/components/schemas/CreateEscalationRuleRequest" }
       responses:
-        '201':
+        "201":
           description: Escalation rule created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/EscalationRule' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+              schema: { $ref: "#/components/schemas/EscalationRule" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /admin/escalation-rules/{id}:
     put:
@@ -1303,22 +1308,22 @@ paths:
       summary: Update an escalation rule
       description: Replaces the escalation rule (full update). Requires ADMIN role.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreateEscalationRuleRequest' }
+            schema: { $ref: "#/components/schemas/CreateEscalationRuleRequest" }
       responses:
-        '200':
+        "200":
           description: Updated escalation rule
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/EscalationRule' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: { $ref: "#/components/schemas/EscalationRule" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ── Admin — Reports, Settings, Branding ───────────────────────────────────────
 
@@ -1331,16 +1336,16 @@ paths:
         Returns summary statistics for dispatch volume, status distribution, and processing times.
         Accepts optional date range filters. Requires ADMIN role.
       parameters:
-        - $ref: '#/components/parameters/DateFrom'
-        - $ref: '#/components/parameters/DateTo'
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
       responses:
-        '200':
+        "200":
           description: Report statistics
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ReportSummary' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+              schema: { $ref: "#/components/schemas/ReportSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /admin/settings:
     get:
@@ -1349,7 +1354,7 @@ paths:
       summary: Read system settings
       description: Returns all key-value pairs from the system_settings table. Requires ADMIN role.
       responses:
-        '200':
+        "200":
           description: System settings
           content:
             application/json:
@@ -1359,8 +1364,8 @@ paths:
               example:
                 nav_config: "[{...}]"
                 maintenance_mode: "false"
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
     patch:
       tags: [Admin]
@@ -1375,16 +1380,16 @@ paths:
               type: object
               additionalProperties: true
       responses:
-        '200':
+        "200":
           description: Updated settings
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties: true
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /admin/branding:
     get:
@@ -1393,13 +1398,13 @@ paths:
       summary: Read branding configuration
       description: Returns the current branding configuration. Requires ADMIN role.
       responses:
-        '200':
+        "200":
           description: Branding configuration
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BrandingConfig' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+              schema: { $ref: "#/components/schemas/BrandingConfig" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
     put:
       tags: [Admin]
@@ -1410,16 +1415,16 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/BrandingConfig' }
+            schema: { $ref: "#/components/schemas/BrandingConfig" }
       responses:
-        '200':
+        "200":
           description: Updated branding configuration
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BrandingConfig' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+              schema: { $ref: "#/components/schemas/BrandingConfig" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   # ── Notifications ─────────────────────────────────────────────────────────────
 
@@ -1430,17 +1435,17 @@ paths:
       summary: List recent notifications
       description: Returns recent in-app notifications for the authenticated user.
       parameters:
-        - $ref: '#/components/parameters/PageParam'
-        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
       responses:
-        '200':
+        "200":
           description: Notification list
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/Notification' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+                items: { $ref: "#/components/schemas/Notification" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /notifications/{id}/read:
     patch:
@@ -1449,12 +1454,12 @@ paths:
       summary: Mark a notification as read
       description: Sets the notification's read status to true.
       parameters:
-        - $ref: '#/components/parameters/ResourceID'
+        - $ref: "#/components/parameters/ResourceID"
       responses:
-        '204':
+        "204":
           description: Notification marked as read
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /notifications/stream:
     get:
@@ -1473,14 +1478,14 @@ paths:
 
         The connection is closed by the server if the user's session expires.
       responses:
-        '200':
+        "200":
           description: SSE stream opened
           content:
             text/event-stream:
               schema:
                 type: string
                 description: Newline-delimited SSE events
-        '401': { $ref: '#/components/responses/Unauthorized' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   # ── System ────────────────────────────────────────────────────────────────────
 
@@ -1492,7 +1497,7 @@ paths:
       description: Returns 200 if the server process is running. No dependency checks.
       security: []
       responses:
-        '200':
+        "200":
           description: Server is alive
           content:
             text/plain:
@@ -1507,13 +1512,13 @@ paths:
       description: Returns 200 if the server is ready to serve traffic (database reachable).
       security: []
       responses:
-        '200':
+        "200":
           description: Server is ready
           content:
             text/plain:
               schema: { type: string }
               example: "ready"
-        '503':
+        "503":
           description: Server not ready (database unreachable)
           content:
             text/plain:
@@ -1568,38 +1573,42 @@ components:
       description: Bad request — invalid JSON or missing required field
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+          schema: { $ref: "#/components/schemas/Error" }
           example: { error: "invalid request body" }
     Unauthorized:
       description: Missing or invalid access token
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+          schema: { $ref: "#/components/schemas/Error" }
           example: { error: "unauthorized" }
     Forbidden:
       description: Authenticated but insufficient role or permission
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+          schema: { $ref: "#/components/schemas/Error" }
           example: { error: "forbidden" }
     Locked:
       description: Account temporarily locked due to too many failed login attempts
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error' }
-          example: { error: "account temporarily locked due to too many failed attempts" }
+          schema: { $ref: "#/components/schemas/Error" }
+          example:
+            {
+              error: "account temporarily locked due to too many failed attempts",
+            }
     NotFound:
       description: Resource not found
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+          schema: { $ref: "#/components/schemas/Error" }
           example: { error: "not found" }
     UnprocessableEntity:
       description: Validation error — request is well-formed but semantically invalid
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ValidationError' }
-          example: { error: "email is not a valid email address", field: "email" }
+          schema: { $ref: "#/components/schemas/ValidationError" }
+          example:
+            { error: "email is not a valid email address", field: "email" }
     TooManyRequests:
       description: Rate limit exceeded
       headers:
@@ -1608,13 +1617,13 @@ components:
           schema: { type: integer }
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+          schema: { $ref: "#/components/schemas/Error" }
           example: { error: "rate limit exceeded" }
     InternalError:
       description: Unexpected server error
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+          schema: { $ref: "#/components/schemas/Error" }
           example: { error: "internal server error" }
 
   schemas:
@@ -1645,7 +1654,17 @@ components:
 
     DispatchStatus:
       type: string
-      enum: [PENDING_ASSIGNMENT, UNDER_REVIEW, IN_TRANSIT, ATTEMPTED_DELIVERY, DELIVERED, ESCALATED, DISPATCHED, REJECTED]
+      enum:
+        [
+          PENDING_ASSIGNMENT,
+          UNDER_REVIEW,
+          IN_TRANSIT,
+          ATTEMPTED_DELIVERY,
+          DELIVERED,
+          ESCALATED,
+          DISPATCHED,
+          REJECTED,
+        ]
 
     DispatchDirection:
       type: string
@@ -1704,7 +1723,17 @@ components:
 
     User:
       type: object
-      required: [id, organizationId, emailAddress, fullName, role, isActive, createdAt, updatedAt]
+      required:
+        [
+          id,
+          organizationId,
+          emailAddress,
+          fullName,
+          role,
+          isActive,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id: { type: string, format: uuid }
         organizationId: { type: string, format: uuid }
@@ -1717,7 +1746,7 @@ components:
         jobTitle:
           type: string
           nullable: true
-        role: { $ref: '#/components/schemas/UserRole' }
+        role: { $ref: "#/components/schemas/UserRole" }
         isActive: { type: boolean }
         lastLoginAt:
           type: string
@@ -1733,7 +1762,7 @@ components:
         id: { type: string, format: uuid }
         fullName: { type: string }
         emailAddress: { type: string, format: email }
-        role: { $ref: '#/components/schemas/UserRole' }
+        role: { $ref: "#/components/schemas/UserRole" }
         departmentId:
           type: string
           format: uuid
@@ -1741,12 +1770,27 @@ components:
 
     Dispatch:
       type: object
-      required: [id, organizationId, trackingNumber, direction, documentTypeId, senderName, submittedByUserId, priorityLevel, statusState, isManuallyRouted, isEscalated, createdAt, updatedAt]
+      required:
+        [
+          id,
+          organizationId,
+          trackingNumber,
+          direction,
+          documentTypeId,
+          senderName,
+          submittedByUserId,
+          priorityLevel,
+          statusState,
+          isManuallyRouted,
+          isEscalated,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id: { type: string, format: uuid }
         organizationId: { type: string, format: uuid }
         trackingNumber: { type: string }
-        direction: { $ref: '#/components/schemas/DispatchDirection' }
+        direction: { $ref: "#/components/schemas/DispatchDirection" }
         documentTypeId: { type: string, format: uuid }
         senderName: { type: string }
         senderOrganization:
@@ -1770,8 +1814,8 @@ components:
           format: uuid
           nullable: true
         submittedByUserId: { type: string, format: uuid }
-        priorityLevel: { $ref: '#/components/schemas/PriorityLevel' }
-        statusState: { $ref: '#/components/schemas/DispatchStatus' }
+        priorityLevel: { $ref: "#/components/schemas/PriorityLevel" }
+        statusState: { $ref: "#/components/schemas/DispatchStatus" }
         subjectLine:
           type: string
           nullable: true
@@ -1801,14 +1845,23 @@ components:
 
     DispatchSummary:
       type: object
-      required: [id, trackingNumber, direction, senderName, priorityLevel, statusState, createdAt]
+      required:
+        [
+          id,
+          trackingNumber,
+          direction,
+          senderName,
+          priorityLevel,
+          statusState,
+          createdAt,
+        ]
       properties:
         id: { type: string, format: uuid }
         trackingNumber: { type: string }
-        direction: { $ref: '#/components/schemas/DispatchDirection' }
+        direction: { $ref: "#/components/schemas/DispatchDirection" }
         senderName: { type: string }
-        priorityLevel: { $ref: '#/components/schemas/PriorityLevel' }
-        statusState: { $ref: '#/components/schemas/DispatchStatus' }
+        priorityLevel: { $ref: "#/components/schemas/PriorityLevel" }
+        statusState: { $ref: "#/components/schemas/DispatchStatus" }
         createdAt: { type: string, format: date-time }
 
     DispatchEvent:
@@ -1866,7 +1919,7 @@ components:
         id: { type: string, format: uuid }
         organizationId: { type: string, format: uuid }
         dispatchId: { type: string, format: uuid }
-        status: { $ref: '#/components/schemas/MinuteSheetStatus' }
+        status: { $ref: "#/components/schemas/MinuteSheetStatus" }
         approvedById:
           type: string
           format: uuid
@@ -1879,11 +1932,22 @@ components:
         updatedAt: { type: string, format: date-time }
         notes:
           type: array
-          items: { $ref: '#/components/schemas/GreenNote' }
+          items: { $ref: "#/components/schemas/GreenNote" }
 
     GreenNote:
       type: object
-      required: [id, organizationId, minuteSheetId, authorOfficerId, sequenceOrder, contentBody, cryptographicHash, previousHash, createdAt]
+      required:
+        [
+          id,
+          organizationId,
+          minuteSheetId,
+          authorOfficerId,
+          sequenceOrder,
+          contentBody,
+          cryptographicHash,
+          previousHash,
+          createdAt,
+        ]
       properties:
         id: { type: string, format: uuid }
         organizationId: { type: string, format: uuid }
@@ -1891,8 +1955,16 @@ components:
         authorOfficerId: { type: string, format: uuid }
         sequenceOrder: { type: integer }
         contentBody: { type: string }
-        cryptographicHash: { type: string, description: SHA-256 hash of contentBody + sequenceOrder + authorOfficerId }
-        previousHash: { type: string, description: cryptographicHash of the preceding note (empty string for the first note) }
+        cryptographicHash:
+          {
+            type: string,
+            description: SHA-256 hash of contentBody + sequenceOrder + authorOfficerId,
+          }
+        previousHash:
+          {
+            type: string,
+            description: cryptographicHash of the preceding note (empty string for the first note),
+          }
         digitalSignature:
           type: string
           nullable: true
@@ -1900,7 +1972,15 @@ components:
 
     AuditEntry:
       type: object
-      required: [id, organizationId, actionEventType, previousChecksum, checksum, createdAt]
+      required:
+        [
+          id,
+          organizationId,
+          actionEventType,
+          previousChecksum,
+          checksum,
+          createdAt,
+        ]
       properties:
         id: { type: integer, format: int64 }
         organizationId: { type: string, format: uuid }
@@ -1908,7 +1988,7 @@ components:
           type: string
           format: uuid
           nullable: true
-        actionEventType: { $ref: '#/components/schemas/AuditEventType' }
+        actionEventType: { $ref: "#/components/schemas/AuditEventType" }
         targetResourceId:
           type: string
           format: uuid
@@ -1931,7 +2011,18 @@ components:
 
     RoutingRule:
       type: object
-      required: [id, organizationId, name, priorityOrder, isActive, conditions, destinations, createdAt, updatedAt]
+      required:
+        [
+          id,
+          organizationId,
+          name,
+          priorityOrder,
+          isActive,
+          conditions,
+          destinations,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id: { type: string, format: uuid }
         organizationId: { type: string, format: uuid }
@@ -1940,10 +2031,10 @@ components:
         isActive: { type: boolean }
         conditions:
           type: array
-          items: { $ref: '#/components/schemas/RoutingRuleCondition' }
+          items: { $ref: "#/components/schemas/RoutingRuleCondition" }
         destinations:
           type: array
-          items: { $ref: '#/components/schemas/RoutingRuleDestination' }
+          items: { $ref: "#/components/schemas/RoutingRuleDestination" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -1975,7 +2066,16 @@ components:
 
     EscalationRule:
       type: object
-      required: [id, organizationId, name, escalateAfterHours, isActive, createdAt, updatedAt]
+      required:
+        [
+          id,
+          organizationId,
+          name,
+          escalateAfterHours,
+          isActive,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id: { type: string, format: uuid }
         organizationId: { type: string, format: uuid }
@@ -2005,7 +2105,7 @@ components:
       required: [id, type, title, isRead, createdAt]
       properties:
         id: { type: string, format: uuid }
-        type: { $ref: '#/components/schemas/NotificationType' }
+        type: { $ref: "#/components/schemas/NotificationType" }
         title: { type: string }
         body:
           type: string
@@ -2036,25 +2136,29 @@ components:
       type: object
       required: [branding, nav, features, org]
       properties:
-        branding: { $ref: '#/components/schemas/BrandingConfig' }
+        branding: { $ref: "#/components/schemas/BrandingConfig" }
         nav:
           type: array
-          items: { $ref: '#/components/schemas/NavGroup' }
-        features: { $ref: '#/components/schemas/FeatureFlags' }
-        org: { $ref: '#/components/schemas/OrgProfile' }
+          items: { $ref: "#/components/schemas/NavGroup" }
+        features: { $ref: "#/components/schemas/FeatureFlags" }
+        org: { $ref: "#/components/schemas/OrgProfile" }
 
     BrandingConfig:
       type: object
       required: [primaryColor, neutralPalette, fontFamily, wordmark]
       properties:
-        primaryColor: { type: string, description: 'CSS hex color, e.g. "#4f46e5"' }
-        neutralPalette: { type: string, description: 'Tailwind palette name, e.g. "slate"' }
-        fontFamily: { type: string, description: 'Font family name, e.g. "Inter"' }
+        primaryColor:
+          { type: string, description: 'CSS hex color, e.g. "#4f46e5"' }
+        neutralPalette:
+          { type: string, description: 'Tailwind palette name, e.g. "slate"' }
+        fontFamily:
+          { type: string, description: 'Font family name, e.g. "Inter"' }
         logoUrl:
           type: string
           nullable: true
           description: URL to the organization logo image
-        wordmark: { type: string, description: Text wordmark displayed in the sidebar }
+        wordmark:
+          { type: string, description: Text wordmark displayed in the sidebar }
 
     NavGroup:
       type: object
@@ -2066,14 +2170,18 @@ components:
           items: { type: string }
         items:
           type: array
-          items: { $ref: '#/components/schemas/NavItem' }
+          items: { $ref: "#/components/schemas/NavItem" }
 
     NavItem:
       type: object
       required: [label, icon, to]
       properties:
         label: { type: string }
-        icon: { type: string, description: 'Iconify icon name, e.g. "i-lucide-inbox"' }
+        icon:
+          {
+            type: string,
+            description: 'Iconify icon name, e.g. "i-lucide-inbox"',
+          }
         to: { type: string, description: Route path or URL }
         badge:
           type: integer
@@ -2092,7 +2200,11 @@ components:
       required: [name, timezone, locale, contactEmail]
       properties:
         name: { type: string }
-        timezone: { type: string, description: 'IANA timezone string, e.g. "Asia/Ho_Chi_Minh"' }
+        timezone:
+          {
+            type: string,
+            description: 'IANA timezone string, e.g. "Asia/Ho_Chi_Minh"',
+          }
         locale: { type: string, description: 'BCP 47 locale tag, e.g. "vi-VN"' }
         contactEmail: { type: string, format: email }
 
@@ -2104,7 +2216,7 @@ components:
         totalRows: { type: integer }
         brokenAt:
           type: array
-          items: { $ref: '#/components/schemas/BrokenLink' }
+          items: { $ref: "#/components/schemas/BrokenLink" }
 
     BrokenLink:
       type: object
@@ -2151,14 +2263,14 @@ components:
       type: object
       required: [direction, documentTypeId, senderName, priorityLevel]
       properties:
-        direction: { $ref: '#/components/schemas/DispatchDirection' }
+        direction: { $ref: "#/components/schemas/DispatchDirection" }
         documentTypeId: { type: string, format: uuid }
         senderName: { type: string }
         senderOrganization: { type: string, nullable: true }
         recipientName: { type: string, nullable: true }
         recipientOrganization: { type: string, nullable: true }
         recipientAddress: { type: string, nullable: true }
-        priorityLevel: { $ref: '#/components/schemas/PriorityLevel' }
+        priorityLevel: { $ref: "#/components/schemas/PriorityLevel" }
         subjectLine: { type: string, nullable: true }
         deliveryMode: { type: string, nullable: true }
 
@@ -2180,7 +2292,11 @@ components:
       required: [contentBody, previousHash]
       properties:
         contentBody: { type: string, minLength: 1 }
-        previousHash: { type: string, description: cryptographicHash of the last note; empty string for the first note }
+        previousHash:
+          {
+            type: string,
+            description: cryptographicHash of the last note; empty string for the first note,
+          }
 
     CreateUserRequest:
       type: object
@@ -2188,7 +2304,7 @@ components:
       properties:
         email: { type: string, format: email }
         fullName: { type: string }
-        role: { $ref: '#/components/schemas/UserRole' }
+        role: { $ref: "#/components/schemas/UserRole" }
         departmentId:
           type: string
           format: uuid
@@ -2210,7 +2326,7 @@ components:
       properties:
         nav:
           type: array
-          items: { $ref: '#/components/schemas/NavGroup' }
+          items: { $ref: "#/components/schemas/NavGroup" }
 
     PatchFeaturesRequest:
       type: object

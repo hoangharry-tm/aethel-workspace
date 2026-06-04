@@ -1,20 +1,6 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"log/slog"
-	"os"
-	"strconv"
-	"time"
-	"bufio"
-	"strings"
-	"errors"
-
-	"github.com/google/uuid"
-	"github.com/joho/godotenv"
-	"github.com/spf13/cobra"
-
 	"aethel-core/internal/api"
 	"aethel-core/internal/api/docs"
 	"aethel-core/internal/api/handlers"
@@ -25,6 +11,19 @@ import (
 	"aethel-core/internal/database/repos"
 	"aethel-core/internal/domain"
 	"aethel-core/internal/service"
+	"bufio"
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/joho/godotenv"
+	"github.com/spf13/cobra"
 
 	"golang.org/x/term"
 )
@@ -173,18 +172,20 @@ func runServe(cmd *cobra.Command, args []string) error {
 		auditRepo   domain.AuditRepository         = repos.NewAuditRepo(db, queries)
 	)
 
+	// Sprint 3 — workflow repositories: real DB implementations.
+	minuteSheetRepo := repos.NewMinuteSheetRepo(db, queries)
+	greenNoteRepo := repos.NewGreenNoteRepo(db, queries)
+
 	// Sprint 3–4 placeholders.
 	var (
-		msRepo      domain.MinuteSheetRepository    = &noopMSRepo{}
-		gnRepo      domain.GreenNoteRepository      = &noopGNRepo{}
 		docTypeRepo domain.DocumentTypeRepository   = &noopDocTypeRepo{}
 		escRepo     domain.EscalationRuleRepository = &noopEscRepo{}
 	)
 
 	// 8. Wire services.
 	authSvc := service.NewAuthService(userRepo, sessionRepo, pwResetRepo, auditRepo)
-	dispatchSvc := service.NewDispatchService(dispatchRepo, eventRepo, routingRepo, msRepo, auditRepo)
-	workflowSvc := service.NewWorkflowService(msRepo, gnRepo, auditRepo)
+	dispatchSvc := service.NewDispatchService(dispatchRepo, eventRepo, routingRepo, minuteSheetRepo, auditRepo, db)
+	workflowSvc := service.NewWorkflowService(minuteSheetRepo, greenNoteRepo, auditRepo)
 
 	// 9. Wire handlers.
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -424,6 +425,7 @@ func (r *bootstrapAuditRepo) Write(_ context.Context, _ *domain.AuditEntry) erro
 func (r *bootstrapAuditRepo) Query(_ context.Context, _ uuid.UUID, _, _ time.Time, _ domain.Page) ([]domain.AuditEntry, error) {
 	return nil, nil
 }
+
 func (r *bootstrapAuditRepo) VerifyChain(_ context.Context, _ uuid.UUID, _, _ time.Time) (*domain.ChainVerificationResult, error) {
 	return &domain.ChainVerificationResult{Valid: true}, nil
 }
@@ -435,6 +437,7 @@ type noopMSRepo struct{}
 func (r *noopMSRepo) GetByDispatchID(_ context.Context, _, _ uuid.UUID) (*domain.MinuteSheet, error) {
 	return nil, domain.ErrNotFound
 }
+
 func (r *noopMSRepo) GetByID(_ context.Context, _, _ uuid.UUID) (*domain.MinuteSheet, error) {
 	return nil, domain.ErrNotFound
 }
@@ -447,6 +450,7 @@ func (r *noopGNRepo) Create(_ context.Context, _ *domain.GreenNote) error { retu
 func (r *noopGNRepo) ListByMinuteSheet(_ context.Context, _, _ uuid.UUID) ([]domain.GreenNote, error) {
 	return nil, nil
 }
+
 func (r *noopGNRepo) GetLastByMinuteSheet(_ context.Context, _, _ uuid.UUID) (*domain.GreenNote, error) {
 	return nil, domain.ErrNotFound
 }
@@ -456,6 +460,7 @@ type noopDocTypeRepo struct{}
 func (r *noopDocTypeRepo) List(_ context.Context, _ uuid.UUID) ([]domain.DocumentType, error) {
 	return nil, nil
 }
+
 func (r *noopDocTypeRepo) GetByID(_ context.Context, _, _ uuid.UUID) (*domain.DocumentType, error) {
 	return nil, domain.ErrNotFound
 }
@@ -468,6 +473,7 @@ type noopEscRepo struct{}
 func (r *noopEscRepo) List(_ context.Context, _ uuid.UUID) ([]domain.EscalationRule, error) {
 	return nil, nil
 }
+
 func (r *noopEscRepo) GetByID(_ context.Context, _, _ uuid.UUID) (*domain.EscalationRule, error) {
 	return nil, domain.ErrNotFound
 }

@@ -1,8 +1,17 @@
+// Package api wires together the HTTP router, middleware stack, and all
+// request handlers for the Aethel backend.
 package api
 
 import (
+	"aethel-core/internal/api/docs"
+	"aethel-core/internal/api/handlers"
+	"aethel-core/internal/app"
+	"aethel-core/internal/config"
+	"aethel-core/internal/database"
+	"aethel-core/internal/domain"
+	"aethel-core/internal/rbac"
+	"aethel-core/internal/transport"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,15 +24,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"aethel-core/internal/api/docs"
-	"aethel-core/internal/api/handlers"
 	apiMW "aethel-core/internal/api/middleware"
-	"aethel-core/internal/app"
-	"aethel-core/internal/config"
-	"aethel-core/internal/database"
-	"aethel-core/internal/domain"
-	"aethel-core/internal/rbac"
-	"aethel-core/internal/transport"
 )
 
 func init() {
@@ -111,7 +112,7 @@ func (s *Server) buildRouter(
 	// ── Health probes ─────────────────────────────────────────────────────────
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "ok")
+		_, _ = fmt.Fprintln(w, "ok")
 	})
 	r.Get("/ready", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.db.PingContext(r.Context()); err != nil {
@@ -119,7 +120,7 @@ func (s *Server) buildRouter(
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "ready")
+		_, _ = fmt.Fprintln(w, "ready")
 	})
 
 	// ── API v1 ────────────────────────────────────────────────────────────────
@@ -148,6 +149,7 @@ func (s *Server) buildRouter(
 		r.With(rbac.Require("dispatch.create")).Post("/dispatches", dispatchSvc.Create)
 		r.With(rbac.Require("dispatch.view")).Get("/dispatches/outbound", dispatchSvc.ListOutbound)
 		r.With(rbac.Require("dispatch.create")).Post("/dispatches/outbound", dispatchSvc.CreateOutbound)
+		r.With(rbac.Require("admin.access")).Get("/dispatches/unassigned", dispatchSvc.ListUnassigned)
 		r.With(rbac.Require("workflow.view")).Get("/my-dispatches", dispatchSvc.ListMyDispatches)
 		r.With(rbac.Require("dispatch.view")).Get("/search", dispatchSvc.Search)
 
@@ -156,6 +158,7 @@ func (s *Server) buildRouter(
 			r.With(rbac.Require("dispatch.create")).Patch("/status", dispatchSvc.UpdateStatus)
 			r.With(rbac.Require("dispatch.assign")).Post("/assign", dispatchSvc.Assign)
 			r.With(rbac.Require("dispatch.deliver")).Post("/acknowledge", dispatchSvc.Acknowledge)
+			r.With(rbac.Require("dispatch.view")).Get("/timeline", dispatchSvc.GetTimeline)
 			r.With(rbac.Require("dispatch.view")).Get("/attachments", dispatchSvc.ListAttachments)
 			r.With(rbac.Require("dispatch.create")).Post("/attachments", dispatchSvc.UploadAttachment)
 			r.With(rbac.Require("dispatch.assign")).Delete("/attachments/{att_id}", dispatchSvc.DeleteAttachment)
@@ -212,7 +215,7 @@ func (s *Server) buildRouter(
 		})
 		r.With(rbac.Require("dispatch.view")).Get("/notifications", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintln(w, "[]")
+			_, _ = fmt.Fprintln(w, "[]")
 		})
 		r.With(rbac.Require("dispatch.view")).Patch("/notifications/{id}/read", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
@@ -245,7 +248,7 @@ func (s *Server) jwtMiddleware(next http.Handler) http.Handler {
 			secret = "dev-secret-change-in-production"
 		}
 
-		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method")
 			}
@@ -302,11 +305,4 @@ func zerologMiddleware(next http.Handler) http.Handler {
 			Str("request_id", middleware.GetReqID(r.Context())).
 			Msg("request")
 	})
-}
-
-// errorJSON writes a JSON error response (used by middleware).
-func errorJSON(w http.ResponseWriter, msg string, status int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }

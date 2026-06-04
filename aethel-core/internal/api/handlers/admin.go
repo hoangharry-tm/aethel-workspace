@@ -1,14 +1,13 @@
 package handlers
 
 import (
+	"aethel-core/internal/domain"
+	"aethel-core/internal/rbac"
 	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-
-	"aethel-core/internal/domain"
-	"aethel-core/internal/rbac"
 )
 
 type AdminHandler struct {
