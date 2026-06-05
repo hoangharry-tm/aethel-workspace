@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aethel Workspace — Full-Project Audit Report · 2026-06-05</title>
+  <style>
+    /* ============================================================
+       AETHEL AUDIT REPORT — Self-contained CSS
+       Color system matches Aethel design system (CLAUDE.md)
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --indigo:   #4f46e5;
+      --indigo-l: #eef2ff;
+      --emerald:  #10b981;
+      --emerald-l:#d1fae5;
+      --amber:    #f59e0b;
+      --amber-l:  #fef3c7;
+      --red:      #ef4444;
+      --red-l:    #fee2e2;
+      --slate-50: #f8fafc;
+      --slate-100:#f1f5f9;
+      --slate-200:#e2e8f0;
+      --slate-500:#64748b;
+      --slate-600:#475569;
+      --slate-700:#334155;
+      --slate-800:#1e293b;
+      --white:    #ffffff;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
+      background: var(--slate-50);
+      color: var(--slate-800);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+    /* ---- HEADER ---- */
+    header {
+      background: linear-gradient(135deg, var(--indigo) 0%, #6366f1 60%, #818cf8 100%);
+      color: white;
+      padding: 3rem 2rem;
+      margin-bottom: 2rem;
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
+    }
+    header .logo { font-size: 0.8rem; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.75; margin-bottom: 0.5rem; }
+    header h1 { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em; }
+    header h2 { font-size: 1.1rem; font-weight: 400; opacity: 0.85; margin-top: 0.25rem; }
+    header .meta { display: flex; gap: 2rem; margin-top: 1.5rem; flex-wrap: wrap; }
+    header .meta-item { display: flex; flex-direction: column; }
+    header .meta-item .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.65; }
+    header .meta-item .value { font-size: 0.95rem; font-weight: 600; font-family: 'SF Mono', 'Fira Code', monospace; }
+
+    /* ---- CARDS ---- */
+    .card {
+      background: var(--white);
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm);
+      padding: 1.5rem;
+      border: 1px solid var(--slate-200);
+    }
+    .card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--slate-700);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--slate-100);
+    }
+
+    /* ---- SECTION TITLES ---- */
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--slate-800);
+      margin: 2.5rem 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 2px;
+      background: var(--slate-200);
+      margin-left: 0.5rem;
+    }
+
+    /* ---- OVERALL SCORE ---- */
+    .overall-section {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .score-circle-wrap { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+    .score-circle {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      border: 12px solid var(--emerald);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: white;
+      box-shadow: 0 0 0 4px var(--emerald-l);
+    }
+    .score-circle.warn  { border-color: var(--amber);   box-shadow: 0 0 0 4px var(--amber-l);   }
+    .score-circle.danger{ border-color: var(--red);     box-shadow: 0 0 0 4px var(--red-l);     }
+    .score-number { font-size: 2.8rem; font-weight: 900; line-height: 1; }
+    .score-label  { font-size: 0.75rem; color: var(--slate-500); text-transform: uppercase; letter-spacing: 0.08em; }
+    .score-breakdown { flex: 1; min-width: 260px; }
+    .breakdown-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem; }
+    .breakdown-domain { width: 100px; font-size: 0.85rem; color: var(--slate-600); font-weight: 500; }
+    .breakdown-bar-bg { flex: 1; height: 8px; border-radius: 4px; background: var(--slate-100); }
+    .breakdown-bar-fill { height: 8px; border-radius: 4px; }
+    .breakdown-val { width: 40px; text-align: right; font-size: 0.85rem; font-weight: 700; }
+    .breakdown-weight { font-size: 0.7rem; color: var(--slate-500); width: 32px; }
+
+    /* ---- DOMAIN CARDS GRID ---- */
+    .domain-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    .domain-card { text-align: center; }
+    .domain-card .icon { font-size: 2.2rem; display: block; margin-bottom: 0.5rem; }
+    .domain-card .name { font-weight: 700; font-size: 1rem; color: var(--slate-700); margin-bottom: 0.5rem; }
+    .domain-card .progress-bg { height: 8px; border-radius: 4px; background: var(--slate-100); margin: 0.5rem 0; }
+    .domain-card .progress-fill { height: 8px; border-radius: 4px; }
+    .domain-card .score-text { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.25rem; }
+    .domain-card .summary { font-size: 0.8rem; color: var(--slate-500); line-height: 1.4; }
+
+    /* ---- PROGRESS COLORS ---- */
+    .fill-green  { background: var(--emerald); }
+    .fill-yellow { background: var(--amber); }
+    .fill-red    { background: var(--red); }
+    .fill-indigo { background: var(--indigo); }
+
+    .text-green  { color: var(--emerald); }
+    .text-yellow { color: var(--amber); }
+    .text-red    { color: var(--red); }
+    .text-indigo { color: var(--indigo); }
+
+    /* ---- TABLES ---- */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    thead tr { background: var(--indigo); color: white; }
+    thead th { padding: 0.75rem 1rem; text-align: left; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    tbody tr:nth-child(even) { background: var(--slate-50); }
+    tbody tr:hover { background: var(--indigo-l); transition: background 0.15s; }
+    tbody td { padding: 0.65rem 1rem; border-bottom: 1px solid var(--slate-100); vertical-align: top; }
+
+    /* Sprint table row colors */
+    tr.row-green  td { background: #f0fdf4 !important; }
+    tr.row-yellow td { background: #fffbeb !important; }
+    tr.row-red    td { background: #fef2f2 !important; }
+
+    /* ---- STAR RATINGS ---- */
+    .star-excellent { color: #f59e0b; font-size: 1rem; }
+    .star-good      { color: #64748b; font-size: 0.9rem; }
+    .star-poor      { color: #ef4444; }
+
+    /* ---- BADGES / PILLS ---- */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.15rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-red    { background: var(--red-l);    color: #b91c1c; }
+    .badge-yellow { background: var(--amber-l);  color: #92400e; }
+    .badge-green  { background: var(--emerald-l);color: #065f46; }
+    .badge-indigo { background: var(--indigo-l); color: var(--indigo); }
+    .badge-slate  { background: var(--slate-100);color: var(--slate-600); }
+
+    /* ---- FINDINGS PANELS ---- */
+    .findings-panel { border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+    .findings-panel.good    { background: var(--emerald-l); border: 1px solid #a7f3d0; }
+    .findings-panel.needs   { background: #fffbeb;           border: 1px solid #fde68a; }
+    .findings-panel h4      { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem; }
+    .findings-panel.good h4 { color: #065f46; }
+    .findings-panel.needs h4{ color: #92400e; }
+    .findings-list { list-style: none; }
+    .findings-list li { padding: 0.4rem 0; border-bottom: 1px solid rgba(0,0,0,.06); display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.875rem; }
+    .findings-list li:last-child { border-bottom: none; }
+    .findings-list code { background: rgba(0,0,0,.07); border-radius: 3px; padding: 0.1rem 0.35rem; font-size: 0.8rem; font-family: 'SF Mono', 'Fira Code', monospace; }
+
+    /* ---- BLOCKQUOTES ---- */
+    blockquote {
+      border-left: 4px solid var(--indigo);
+      padding: 1rem 1.5rem;
+      background: var(--indigo-l);
+      border-radius: 0 8px 8px 0;
+      font-style: italic;
+      color: var(--slate-700);
+      margin: 0.75rem 0;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+    blockquote cite { display: block; margin-top: 0.5rem; font-style: normal; font-size: 0.8rem; color: var(--slate-500); font-weight: 600; }
+
+    /* ---- DETAILS / COLLAPSIBLE ---- */
+    details {
+      border: 1px solid var(--slate-200);
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+      overflow: hidden;
+    }
+    summary {
+      padding: 0.85rem 1.25rem;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--slate-700);
+      background: var(--slate-50);
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::before { content: '▶'; font-size: 0.7rem; color: var(--indigo); transition: transform 0.2s; }
+    details[open] summary::before { transform: rotate(90deg); }
+    details[open] summary { border-bottom: 1px solid var(--slate-200); background: var(--indigo-l); }
+    .details-body { padding: 1.25rem; overflow-x: auto; }
+    .details-body pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      color: var(--slate-700);
+      background: var(--slate-50);
+      border-radius: 6px;
+      padding: 1rem;
+      border: 1px solid var(--slate-200);
+      line-height: 1.5;
+    }
+
+    /* ---- STATS TABLE ---- */
+    .stats-status { font-size: 1rem; }
+
+    /* ---- FOOTER ---- */
+    footer {
+      text-align: center;
+      color: var(--slate-500);
+      font-size: 0.8rem;
+      padding: 2rem 0 1rem;
+      border-top: 1px solid var(--slate-200);
+      margin-top: 3rem;
+    }
+
+    /* ---- CRITICAL ALERT ---- */
+    .alert-box {
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      font-size: 0.875rem;
+    }
+    .alert-box.critical { background: var(--red-l);    border: 1px solid #fca5a5; }
+    .alert-box.warn     { background: var(--amber-l);  border: 1px solid #fcd34d; }
+    .alert-box .alert-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .alert-box .alert-body strong { display: block; margin-bottom: 0.2rem; color: var(--slate-800); }
+    .alert-box .alert-body { color: var(--slate-700); }
+
+    @media (max-width: 640px) {
+      .overall-section { flex-direction: column; }
+      header h1 { font-size: 1.7rem; }
+      .domain-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ============================================================ HEADER ============================================================ -->
+<div class="container">
+
+<header>
+  <div class="logo">Aethel Workspace · Internal Engineering Audit</div>
+  <h1>Full-Project Audit Report</h1>
+  <h2>Comprehensive multi-domain assessment across Frontend, Backend, Database, Security, and DevOps pillars</h2>
+  <div class="meta">
+    <div class="meta-item">
+      <span class="label">Date</span>
+      <span class="value">2026-06-05</span>
+    </div>
+    <div class="meta-item">
+      <span class="label">Git HEAD</span>
+      <span class="value">bf9bddc</span>
+    </div>
+    <div class="meta-item">
+      <span class="label">Branch</span>
+      <span class="value">dev</span>
+    </div>
+    <div class="meta-item">
+      <span class="label">Generated by</span>
+      <span class="value">5-agent parallel audit team (Task 15)</span>
+    </div>
+    <div class="meta-item">
+      <span class="label">Phase</span>
+      <span class="value">Phase 2 — Go Backend (Sprint 2 running)</span>
+    </div>
+  </div>
+</header>
+
+
+<!-- ============================================================ SECTION 1: OVERALL SCORE ============================================================ -->
+<div class="section-title">Overall Score</div>
+
+<div class="card">
+  <div class="overall-section">
+    <div class="score-circle-wrap">
+      <div class="score-circle">
+        <span class="score-number text-green">84%</span>
+        <span class="score-label">Overall</span>
+      </div>
+      <span class="badge badge-green">GOOD STANDING</span>
+    </div>
+    <div class="score-breakdown">
+      <p style="font-size:0.8rem;color:var(--slate-500);margin-bottom:1rem;">
+        Weighted: Frontend ×0.25 + Backend ×0.30 + Database ×0.15 + Security ×0.20 + DevOps ×0.10
+      </p>
+
+      <div class="breakdown-row">
+        <span class="breakdown-domain">Frontend</span>
+        <div class="breakdown-bar-bg"><div class="breakdown-bar-fill fill-green" style="width:97%"></div></div>
+        <span class="breakdown-val text-green">97%</span>
+        <span class="breakdown-weight">×25%</span>
+      </div>
+      <div class="breakdown-row">
+        <span class="breakdown-domain">Backend</span>
+        <div class="breakdown-bar-bg"><div class="breakdown-bar-fill fill-yellow" style="width:75%"></div></div>
+        <span class="breakdown-val text-yellow">75%</span>
+        <span class="breakdown-weight">×30%</span>
+      </div>
+      <div class="breakdown-row">
+        <span class="breakdown-domain">Database</span>
+        <div class="breakdown-bar-bg"><div class="breakdown-bar-fill fill-green" style="width:91%"></div></div>
+        <span class="breakdown-val text-green">91%</span>
+        <span class="breakdown-weight">×15%</span>
+      </div>
+      <div class="breakdown-row">
+        <span class="breakdown-domain">Security</span>
+        <div class="breakdown-bar-bg"><div class="breakdown-bar-fill fill-yellow" style="width:72%"></div></div>
+        <span class="breakdown-val text-yellow">72%</span>
+        <span class="breakdown-weight">×20%</span>
+      </div>
+      <div class="breakdown-row">
+        <span class="breakdown-domain">DevOps</span>
+        <div class="breakdown-bar-bg"><div class="breakdown-bar-fill fill-green" style="width:88%"></div></div>
+        <span class="breakdown-val text-green">88%</span>
+        <span class="breakdown-weight">×10%</span>
+      </div>
+
+      <div style="margin-top:1.25rem;padding-top:1rem;border-top:2px solid var(--slate-100);display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <span class="badge badge-red">4 Critical Findings</span>
+        <span class="badge badge-yellow">9 Important Items</span>
+        <span class="badge badge-slate">7 Nice-to-have</span>
+        <span class="badge badge-green">18/25 Security Controls Pass</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================ SECTION 2: DOMAIN SCORE CARDS ============================================================ -->
+<div class="section-title">Domain Scores</div>
+
+<div class="domain-grid">
+
+  <div class="card domain-card">
+    <span class="icon">🎨</span>
+    <div class="name">Frontend</div>
+    <div class="score-text text-green">97%</div>
+    <div class="progress-bg"><div class="progress-fill fill-green" style="width:97%"></div></div>
+    <div class="summary">19/19 pages implemented (1 partial). Build: zero TypeScript errors, 27.4 MB output. Semantic CSS migration complete. useAuth.ts is production-grade.</div>
+  </div>
+
+  <div class="card domain-card">
+    <span class="icon">⚙️</span>
+    <div class="name">Backend</div>
+    <div class="score-text text-yellow">75%</div>
+    <div class="progress-bg"><div class="progress-fill fill-yellow" style="width:75%"></div></div>
+    <div class="summary">51 Go files. 9/10 repos real. 6 services (2 partial). ~85% routes registered, ~69% fully functional. 2 panic-in-hot-path issues.</div>
+  </div>
+
+  <div class="card domain-card">
+    <span class="icon">🗄️</span>
+    <div class="name">Database</div>
+    <div class="score-text text-green">91%</div>
+    <div class="progress-bg"><div class="progress-fill fill-green" style="width:91%"></div></div>
+    <div class="summary">22/22 migrations up + down. All 20 tables present. 48 named queries. Critical gap: session_repo inline SQL misses expires_at filter — expired sessions may auth.</div>
+  </div>
+
+  <div class="card domain-card">
+    <span class="icon">🔒</span>
+    <div class="name">Security</div>
+    <div class="score-text text-yellow">72%</div>
+    <div class="progress-bg"><div class="progress-fill fill-yellow" style="width:72%"></div></div>
+    <div class="summary">18/25 controls pass. Argon2id, atomic refresh rotation, CSRF correct. Critical gaps: no CSP header, v-html XSS, hardcoded fallback JWT secret, no MaxBytesReader.</div>
+  </div>
+
+  <div class="card domain-card">
+    <span class="icon">🚀</span>
+    <div class="name">DevOps</div>
+    <div class="score-text text-green">88%</div>
+    <div class="progress-bg"><div class="progress-fill fill-green" style="width:88%"></div></div>
+    <div class="summary">13/13 K8s manifests present. CI/CD functional. Critical bug: Dockerfile COPY outside build context — every production image build fails.</div>
+  </div>
+
+</div>
+
+
+<!-- ============================================================ SECTION 3: QUALITY RATINGS ============================================================ -->
+<div class="section-title">Quality Ratings</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Agent</th>
+          <th>Dimension</th>
+          <th>Rating</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Agent 1: Frontend / UI/UX -->
+        <tr>
+          <td><span class="badge badge-indigo">Agent 1 — Frontend</span></td>
+          <td>Accessibility (a11y)</td>
+          <td><span class="star-poor">⭐ Needs Work</span></td>
+          <td>Zero aria-label / role= found. 5 bare &lt;button&gt; with no accessible name. No skip-nav. WCAG 2.1 AA blocker.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-indigo">Agent 1 — Frontend</span></td>
+          <td>Design Consistency</td>
+          <td><span class="star-excellent">⭐⭐⭐ Excellent</span></td>
+          <td>Identical header/table/modal patterns across all 19 pages. UBadge variant="soft" uniform. Table header <code>text-xs font-semibold text-muted uppercase tracking-wider</code> everywhere.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-indigo">Agent 1 — Frontend</span></td>
+          <td>UX Flow &amp; Logic</td>
+          <td><span class="star-good">⭐⭐ Good</span></td>
+          <td>5 UX issues found: dispatch/inbound near-duplicate of dashboard, documents/[id].vue falls back to documents[0] on bad ID, my-documents slices to 4, charts permanently stubbed, dispatch pages missing RECEPTION middleware.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-indigo">Agent 1 — Frontend</span></td>
+          <td>Mobile Responsiveness</td>
+          <td><span class="star-good">⭐⭐ Good</span></td>
+          <td>Sidebar drawer implemented. Column hiding consistent. Global search is <code>hidden md:flex</code> with no mobile fallback. Branding page uses xl:grid-cols-2 (very wide threshold).</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-indigo">Agent 1 — Frontend</span></td>
+          <td>Aesthetic Quality</td>
+          <td><span class="star-excellent">⭐⭐⭐ Excellent</span></td>
+          <td>Professional SaaS-grade. Consistent rounded-xl cards, bg-accent/5 active states, live pulse, branding preview shell genuinely polished.</td>
+        </tr>
+
+        <!-- Agent 2: Backend -->
+        <tr>
+          <td><span class="badge badge-green" style="background:#dcfce7;color:#166534;">Agent 2 — Backend</span></td>
+          <td>Error Handling</td>
+          <td><span class="star-good">⭐⭐ Good</span></td>
+          <td><code>fmt.Errorf("%w")</code> used consistently. Audit write failures silently discarded with <code>_ =</code>. ErrNoRows → ErrNotFound mapping consistent.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green" style="background:#dcfce7;color:#166534;">Agent 2 — Backend</span></td>
+          <td>Context Propagation</td>
+          <td><span class="star-excellent">⭐⭐⭐ Excellent</span></td>
+          <td><code>ctx</code> first param on every method. Zero <code>context.Background()</code> in business logic. Flows HTTP request → service → DB correctly.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green" style="background:#dcfce7;color:#166534;">Agent 2 — Backend</span></td>
+          <td>Interface Design</td>
+          <td><span class="star-excellent">⭐⭐⭐ Excellent</span></td>
+          <td>All repos defined as interfaces in <code>domain/</code>. Services depend only on interfaces. <code>audit.Writer</code> is a clean adapter pattern.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green" style="background:#dcfce7;color:#166534;">Agent 2 — Backend</span></td>
+          <td>Naming Conventions</td>
+          <td><span class="star-good">⭐⭐ Good</span></td>
+          <td>Mostly correct. <code>service.Dispatch</code> DTO collides with <code>domain.Dispatch</code> type name. Some packages missing <code>// Package foo</code> doc comments.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green" style="background:#dcfce7;color:#166534;">Agent 2 — Backend</span></td>
+          <td>Overall Architecture</td>
+          <td><span class="star-excellent">⭐⭐⭐ Excellent</span></td>
+          <td>Clean layers. Single-tenant OrgID pattern documented and consistent. 9-layer middleware correctly ordered. Security fundamentals solid throughout.</td>
+        </tr>
+
+        <!-- Agent 4: Security -->
+        <tr>
+          <td><span class="badge badge-red">Agent 4 — Security</span></td>
+          <td>Injection Prevention</td>
+          <td><span class="star-excellent">⭐⭐⭐ Excellent</span></td>
+          <td>All SQL parameterized. Only <code>fmt.Sprintf</code> in migrator uses schema/table names from internal config (not user input). Gap: no <code>http.MaxBytesReader</code> anywhere — JSON body DoS possible.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">Agent 4 — Security</span></td>
+          <td>RBAC Correctness</td>
+          <td><span class="star-good">⭐⭐ Good</span></td>
+          <td>Role map correct. <code>admin.audit</code> SysAdmin-only. Gap: CreateUser accepts role:"SYS_ADMIN" — any ADMIN can self-escalate. RBAC reject does not write audit events.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">Agent 4 — Security</span></td>
+          <td>Frontend Security</td>
+          <td><span class="star-good">⭐⭐ Good</span></td>
+          <td>No localStorage tokens. CSRF correct. Critical: <code>BlockRichText.vue:54</code> uses <code>v-html</code> without DOMPurify. No CSP header to mitigate XSS.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">Agent 4 — Security</span></td>
+          <td>Dependency Hygiene</td>
+          <td><span class="star-excellent">⭐⭐⭐ Excellent</span></td>
+          <td>Dependencies current and actively maintained (jwt/v5, chi/v5, zerolog, golang.org/x/crypto). No known-vulnerable versions.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ============================================================ SECTION 4: SPRINT PROGRESS VS AGILE PLAN ============================================================ -->
+<div class="section-title">Sprint Progress vs Agile Plan</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Sprint</th>
+          <th>Focus</th>
+          <th>Plan Status</th>
+          <th>Audit Actual</th>
+          <th>Gap Assessment</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="row-green">
+          <td><strong>Sprint 0</strong></td>
+          <td>Foundation</td>
+          <td><span class="badge badge-green">✅ Complete</span></td>
+          <td>CLI, migrator, 50+ routes, stub repos all confirmed present. <code>cmd/aethel/main.go</code> Cobra structure verified. 9-layer middleware wired.</td>
+          <td><span class="badge badge-green">On Track</span></td>
+        </tr>
+        <tr class="row-green">
+          <td><strong>Sprint 1</strong></td>
+          <td>Core Domain &amp; Auth</td>
+          <td><span class="badge badge-green">✅ Complete</span></td>
+          <td>auth_service.go verified complete with Argon2id, JWT, session management. RBAC middleware present. Domain interfaces in domain/ package. All auth tests passing (~8 tests).</td>
+          <td><span class="badge badge-green">On Track</span> — Minor gap: PERMISSION_DENIED events not written on RBAC rejection (plan deliverable)</td>
+        </tr>
+        <tr class="row-green">
+          <td><strong>Sprint 1.5</strong></td>
+          <td>Security + FE Auth Wiring</td>
+          <td><span class="badge badge-green">✅ Complete</span></td>
+          <td>SecurityHeaders, CSRF middleware confirmed. useAuth.ts verified production-grade. login.vue wired to real API. fetch.ts 401 retry-once confirmed.</td>
+          <td><span class="badge badge-green">On Track</span></td>
+        </tr>
+        <tr class="row-yellow">
+          <td><strong>Sprint 2</strong></td>
+          <td>Dispatch Pillar + Config API</td>
+          <td><span class="badge badge-yellow">🔄 Running</span></td>
+          <td>dispatch_repo.go real via QueryRegistry. Config API (GET + PATCH /admin/config/*) confirmed. dispatch_service.Create() bypasses repo — issues raw tx.ExecContext. routing_rule_repo partial SQL. ~85% routes registered.</td>
+          <td><span class="badge badge-yellow">Partial Gap</span> — dispatch_service.Create() should call repo abstraction, not raw SQL. Some route stubs remain (Search, Attachments, Notifications).</td>
+        </tr>
+        <tr class="row-yellow">
+          <td><strong>Sprint 3</strong></td>
+          <td>Workflow Pillar (Green Notes)</td>
+          <td><span class="badge badge-slate">⏳ Queued</span></td>
+          <td>minute_sheet_repo.go exists and partially real (<code>Approve()</code> is documented no-op). green_note_repo.go fully real with SELECT FOR UPDATE concurrency safety. governance_service.go present and complete. 3 governance tests passing.</td>
+          <td><span class="badge badge-green">Ahead of Plan</span> — green_note_repo implemented before sprint queued</td>
+        </tr>
+        <tr class="row-yellow">
+          <td><strong>Task 09</strong></td>
+          <td>OpenAPI 3.1 + Scalar UI</td>
+          <td><span class="badge badge-green">✅ Complete</span></td>
+          <td>openapi.yaml confirmed. handler.go with go:embed. Scalar HTML. Feature gate present.</td>
+          <td><span class="badge badge-green">On Track</span></td>
+        </tr>
+        <tr class="row-yellow">
+          <td><strong>Sprint 4</strong></td>
+          <td>Governance Pillar</td>
+          <td><span class="badge badge-slate">⏳ Not Started</span></td>
+          <td>escalation_service.go present but ruleApplies() is a logic stub — ignores dispatch fields entirely. escalation_worker.go present with test. audit chain verify partially implemented via audit_repo.VerifyChain().</td>
+          <td><span class="badge badge-yellow">Partial Gap</span> — escalation rule evaluation logic needs real implementation before Sprint 4 begins</td>
+        </tr>
+        <tr class="row-red">
+          <td><strong>Sprint 5</strong></td>
+          <td>API Completeness + SSE + i18n</td>
+          <td><span class="badge badge-slate">⏳ Not Started</span></td>
+          <td>SSE broker (transport/sse.go) scaffolded. ~9 routes missing (Search, Attachments, Notifications, Settings, Reports). No i18n tokens. useRuntimeConfig.refresh() still a 300ms setTimeout stub.</td>
+          <td><span class="badge badge-red">Significant Gap</span> — sprint goal not addressable until Sprint 2 completes</td>
+        </tr>
+        <tr class="row-red">
+          <td><strong>Sprint 6</strong></td>
+          <td>Hardening</td>
+          <td><span class="badge badge-slate">⏳ Not Started</span></td>
+          <td>Multiple hardening gaps pre-exist: no CSP header, v-html without DOMPurify, fallback JWT secret, no MaxBytesReader, inline SQL in auth-critical repos, Dockerfile outside-build-context bug.</td>
+          <td><span class="badge badge-red">Significant Gap</span> — security hardening items should not wait for Sprint 6; 4 critical findings need immediate action</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ============================================================ SECTION 5: WHAT'S GOOD ============================================================ -->
+<div class="section-title">What's Working Well</div>
+
+<div class="findings-panel good">
+  <h4>🎨 Frontend — Agent 1</h4>
+  <ul class="findings-list">
+    <li>✅ <strong>useAuth.ts</strong> — textbook secure auth: no localStorage, correct base64url decode, readonly export, every decision commented</li>
+    <li>✅ <strong>fetch.ts ($apiFetch)</strong> — 401 retry-once with infinite-loop guard; production-ready</li>
+    <li>✅ <strong>Design consistency across all 19 pages</strong> — identical header/table/modal patterns, UBadge variant="soft" uniform throughout</li>
+    <li>✅ <strong>365 semantic token uses</strong> — three-layer CSS variable theming architecture works end-to-end; Task 05 migration verified clean</li>
+    <li>✅ <strong>admin/branding.vue live preview mini-shell</strong> — demonstrates runtime config concept compellingly with real color picker</li>
+    <li>✅ <strong>admin/navigation.vue</strong> — inline label editing with Enter/Escape/blur keyboard support</li>
+    <li>✅ <strong>WorkspaceSidebar.vue</strong> — correctly gates navigation on JWT role from real auth state, not mock role switcher</li>
+    <li>✅ <strong>Build: 0 TypeScript errors, 0 missing module errors</strong> — 27.4 MB (10.1 MB gzip) clean production bundle</li>
+    <li>✅ <strong>Zero palette violations</strong> — grep for text-slate/text-indigo/bg-slate/bg-white returns 0 matches in app code</li>
+    <li>✅ <strong>Zero localStorage violations</strong> — 1 match is a comment explaining why NOT used</li>
+  </ul>
+</div>
+
+<div class="findings-panel good">
+  <h4>⚙️ Backend — Agent 2</h4>
+  <ul class="findings-list">
+    <li>✅ <strong>green_note_repo.go</strong> — SELECT FOR UPDATE inside transaction for hash chain safety; concurrent append safety correctly implemented</li>
+    <li>✅ <strong>auth_service.go</strong> — lockout check BEFORE Argon2id verify (prevents timing oracle); constant-time token compare; user enumeration prevention on both login and password-reset</li>
+    <li>✅ <strong>session_repo.go RotateSession()</strong> — correctly atomic in transaction with comment explaining stolen-token protection</li>
+    <li>✅ <strong>server.go middleware stack</strong> — Recoverer before everything; RateLimit before JWT; RateLimitAuthenticated after JWT; correct ordering</li>
+    <li>✅ <strong>csrf.go</strong> — <code>subtle.ConstantTimeCompare</code> for CSRF validation; defense-in-depth with SameSite=Strict</li>
+    <li>✅ <strong>Clean architecture</strong> — all repos defined as interfaces in domain/; services depend only on interfaces; single-tenant OrgID pattern documented and consistent</li>
+    <li>✅ <strong>Context propagation</strong> — ctx first param everywhere; zero context.Background() in business logic</li>
+    <li>✅ <strong>audit_repo.go</strong> — Write+Query+VerifyChain all real; SHA-256 checksum chaining matches formula in workflow_service.go</li>
+    <li>✅ <strong>escalation_rule_repo.go</strong> — elegant rowScanner interface pattern</li>
+  </ul>
+</div>
+
+<div class="findings-panel good">
+  <h4>🗄️ Database — Agent 3</h4>
+  <ul class="findings-list">
+    <li>✅ <strong>22/22 migrations paired (up + down)</strong> — no orphaned files</li>
+    <li>✅ <strong>All 20 original tables present</strong> — plus migration 21 (branding extension) and migration 22 (org seed)</li>
+    <li>✅ <strong>Zero dangling qr.Get() keys</strong> — every QueryRegistry call resolves to an existing YAML key</li>
+    <li>✅ <strong>Intentional FK gaps documented</strong> — dispatch_events.routing_rule_id and audit_ledger.organization_id are non-FK by design with documentation</li>
+    <li>✅ <strong>42/44 migrations use template syntax</strong> — schema/table aliasing works correctly; only extensions migration (01) bypasses templates (correct)</li>
+    <li>✅ <strong>Composite PK (id, created_at) on audit_ledger</strong> — correct for PARTITION BY RANGE; partition performance optimal</li>
+    <li>✅ <strong>Migration 21 branding extension</strong> — adds neutral_palette, font_family, wordmark with idempotent UPDATE seed</li>
+  </ul>
+</div>
+
+<div class="findings-panel good">
+  <h4>🔒 Security — Agent 4</h4>
+  <ul class="findings-list">
+    <li>✅ <strong>Argon2id with OWASP defaults</strong> — PHC format, 64MiB/3iter/4threads, manual constant-time compare</li>
+    <li>✅ <strong>Atomic refresh token rotation</strong> — DELETE+INSERT in BeginTx/Commit; stolen-token protection</li>
+    <li>✅ <strong>CSRF via subtle.ConstantTimeCompare + SameSite=Strict</strong> — defense-in-depth</li>
+    <li>✅ <strong>Security headers complete</strong> — HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Cache-Control: no-store</li>
+    <li>✅ <strong>All SQL parameterized</strong> — no string concatenation injection risk in any handler or service</li>
+    <li>✅ <strong>Account lockout</strong> — 5 failures → 15-min lock → HTTP 423; fully implemented</li>
+    <li>✅ <strong>Email enumeration prevention</strong> — consistent on both login and password-reset paths</li>
+    <li>✅ <strong>Access token never in browser storage</strong> — in-memory via useState; XSS risk comment present in code</li>
+    <li>✅ <strong>Audit ledger INSERT-only</strong> — at both app code and DB privilege level (db-harden.sql REVOKE)</li>
+    <li>✅ <strong>Multi-layer rate limiting</strong> — global IP + login-specific + per-user authenticated</li>
+    <li>✅ <strong>Explicit non-wildcard CORS with credentials: true</strong> — correctly configured</li>
+  </ul>
+</div>
+
+<div class="findings-panel good">
+  <h4>🚀 DevOps — Agent 5</h4>
+  <ul class="findings-list">
+    <li>✅ <strong>aethel-core/Dockerfile</strong> — distroless/static-debian12, nonroot uid 65532, CGO_ENABLED=0, -ldflags="-w -s"; production-hardened</li>
+    <li>✅ <strong>docker-compose.yml</strong> — <code>:?</code> mandatory guards on POSTGRES_PASSWORD and JWT_SECRET; Postgres healthcheck + depends_on service_healthy</li>
+    <li>✅ <strong>13/13 K8s manifests present</strong> — exceeds baseline expectation of 9; backend has readOnlyRootFilesystem, drop ALL caps</li>
+    <li>✅ <strong>All 6 operational scripts present and non-empty</strong> — all use <code>set -euo pipefail</code>; k8s-rollout.sh correctly does migrate-then-restart</li>
+    <li>✅ <strong>All 3 GitHub Actions workflows present</strong> — CI (parallel jobs), CD (multi-arch GHCR), security (weekly Trivy+govulncheck+gosec)</li>
+    <li>✅ <strong>Makefile auto-help</strong> — 30+ targets with <code>## comment</code> auto-generated help</li>
+    <li>✅ <strong>rotate-jwt-secret.sh</strong> — secret printed to stdout only, never written to disk</li>
+  </ul>
+</div>
+
+
+<!-- ============================================================ SECTION 6: NEEDS IMPROVEMENT ============================================================ -->
+<div class="section-title">Needs Improvement</div>
+
+<!-- Critical alerts first -->
+<div class="alert-box critical">
+  <span class="alert-icon">🔴</span>
+  <div class="alert-body">
+    <strong>CRITICAL: Dockerfile outside-build-context (DevOps)</strong>
+    <code>aethel-core/Dockerfile:29</code> — <code>COPY ../blueprints ./blueprints</code> references a path outside the build context. Every production image build in CI will fail. Dev compose works only because blueprints are volume-mounted. Fix: move Dockerfile to workspace root or copy blueprints before docker build.
+  </div>
+</div>
+
+<div class="alert-box critical">
+  <span class="alert-icon">🔴</span>
+  <div class="alert-body">
+    <strong>CRITICAL: Missing Content-Security-Policy header (Security)</strong>
+    <code>internal/api/middleware/security_headers.go</code> — CSP header not set anywhere. Combined with the v-html XSS finding below, this creates a viable stored XSS attack path in admin pages with no browser-level mitigation.
+  </div>
+</div>
+
+<div class="alert-box critical">
+  <span class="alert-icon">🔴</span>
+  <div class="alert-body">
+    <strong>CRITICAL: Stored XSS via v-html without sanitization (Security)</strong>
+    <code>aethel-view/app/components/blocks/BlockRichText.vue:54</code> — <code>v-html="content"</code> with no DOMPurify sanitization. Content from database rendered as raw HTML in admin pages. An attacker who can write to the rich text field can execute JavaScript for every admin who views it. No CSP to mitigate.
+  </div>
+</div>
+
+<div class="alert-box critical">
+  <span class="alert-icon">🔴</span>
+  <div class="alert-body">
+    <strong>CRITICAL: Hardcoded fallback JWT secret (Security)</strong>
+    <code>internal/service/auth_service.go:233-235</code>, <code>internal/api/server.go:241-243</code> — fallback secret <code>"dev-secret-change-in-production"</code> used when env var is missing. Production misconfiguration → universal token forgery. Replace with a hard startup failure: <code>log.Fatal("AETHEL_JWT_SECRET env var required")</code>.
+  </div>
+</div>
+
+<div class="findings-panel needs">
+  <h4>🟡 Important — Backend Issues</h4>
+  <ul class="findings-list">
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>Panic in hot path (every login)</strong> — <code>internal/api/handlers/auth.go:203</code>: <code>generateCSRFToken()</code> panics on <code>crypto/rand.Read</code> failure. Should return <code>(string, error)</code> and propagate.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>Panic on missing query key (mid-request)</strong> — <code>internal/database/query_registry.go:59</code>: <code>Get()</code> panics on missing key. Should validate all required keys in <code>BuildQueryRegistry</code> at startup — fail fast at boot, not mid-request.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>dispatch_service.Create() bypasses repo abstraction</strong> — <code>internal/service/dispatch_service.go:86-116</code>: issues raw <code>tx.ExecContext</code> with literal INSERT instead of calling <code>s.dispatches.Create()</code>. Duplicates queries.yaml entry, breaks testability.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>escalation_service.ruleApplies() logic stub disguised as real code</strong> — <code>internal/service/escalation_service.go:71</code>: ignores dispatch argument entirely; always returns <code>rule.IsActive</code>. All active rules fire on all overdue dispatches regardless of type, urgency, or conditions.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>Inline SQL in auth-critical repos</strong> — <code>internal/database/repos/user_repo.go</code>, <code>session_repo.go</code>, <code>password_reset_repo.go</code>: all use inline SQL strings. The inline <code>GetByEmail</code> does NOT scope by organization_id (YAML version does: <code>WHERE organization_id = $1 AND email_address = $2 AND is_active = true</code>) — behavioral gap.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>Expired session regression</strong> — <code>session_repo.go::GetByTokenHash</code> inline SQL does NOT filter <code>WHERE expires_at &gt; now()</code>. YAML definition <code>session.get_session_by_token_hash</code> includes this filter. Expired sessions may be considered valid by auth middleware.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>No input validation on CreateUser role</strong> — <code>internal/api/handlers/admin.go:53-60</code>: no validation on role value or email format. Invalid role → cryptic Postgres enum violation instead of 400. Also: any ADMIN can create a SYS_ADMIN account via this endpoint.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>No MaxBytesReader on any handler</strong> — JSON body DoS possible on all endpoints. Add <code>http.MaxBytesReader(w, r.Body, 1&lt;&lt;20)</code> in middleware.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>No PostgreSQL service in CI test-backend job</strong> — <code>.github/workflows/ci.yml</code>: integration tests in <code>internal/integration/</code> require a real DB; they skip/fail without <code>services: postgres:</code> block. Add a postgres service container.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>CD workflow: no migration step before kubectl set image</strong> — <code>.github/workflows/cd.yml</code>: schema changes break new pods until manually migrated. <code>k8s-rollout.sh</code> handles this correctly but is not called by the CD workflow.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>Zero ARIA attributes on interactive elements</strong> (Frontend) — <code>auth/login.vue:85</code>, <code>dashboard.vue:139-151</code>, <code>WorkspaceSidebar.vue:103 &amp; 226</code>, <code>admin/navigation.vue:186</code>: bare <code>&lt;button&gt;</code> elements with no accessible names. WCAG 2.1 AA blocker.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>Password reset accepts any-length password</strong> — <code>internal/service/auth_service.go:208-226</code>: <code>ConfirmPasswordReset</code> has no minimum password length validation. Bootstrap path enforces 12-char minimum; reset path does not.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>RBAC rejection not logged to audit ledger</strong> — <code>internal/rbac/middleware.go:55-78</code>: PERMISSION_DENIED and RBAC_ELEVATION_ATTEMPT events not written on 403 rejection. Sprint 1 definition of done requires this.</span>
+    </li>
+    <li>
+      <span class="badge badge-yellow">Important</span>
+      <span><strong>useRuntimeConfig.refresh() is a stub</strong> — <code>composables/useRuntimeConfig.ts:176-181</code>: refresh() is a 300ms setTimeout, never calls real <code>GET /api/v1/config</code>. Must wire to real API once backend is live. Shape already matches API contract.</span>
+    </li>
+  </ul>
+</div>
+
+<div class="findings-panel needs" style="background:#f8fafc;border-color:var(--slate-200);">
+  <h4>🟢 Nice-to-have Improvements</h4>
+  <ul class="findings-list">
+    <li>
+      <span class="badge badge-slate">Low</span>
+      <span><strong>auth/login.vue redundant double-handler</strong> — <code>auth/login.vue:103-112</code>: UButton type="button" @click + form @submit.prevent; change to type="submit" to use single handler path.</span>
+    </li>
+    <li>
+      <span class="badge badge-slate">Low</span>
+      <span><strong>admin/reports.vue chart stubs</strong> — <code>admin/reports.vue:101-134</code>: chart stub boxes should use UAlert with explicit "requires backend connection" message rather than empty placeholder divs.</span>
+    </li>
+    <li>
+      <span class="badge badge-slate">Low</span>
+      <span><strong>nullIfEmpty() Go helper is misleading</strong> — <code>internal/config/handler.go:239</code>: <code>nullIfEmpty()</code> returns argument unchanged; relies on PostgreSQL's NULLIF. The Go helper function name implies a behavior it does not implement.</span>
+    </li>
+    <li>
+      <span class="badge badge-slate">Low</span>
+      <span><strong>documents/[id].vue fallback to documents[0]</strong> — <code>documents/[id].vue:12-13</code>: <code>?? documents[0]</code> shows wrong document on bad ID; should return 404/error state.</span>
+    </li>
+    <li>
+      <span class="badge badge-slate">Low</span>
+      <span><strong>XFF IP from untrusted first entry</strong> — <code>internal/api/middleware/rate_limiter.go:107-110</code>: X-Forwarded-For IP taken from first (untrusted) entry; rate limit bypass via header spoofing. Use rightmost non-private entry or a trusted-proxy library.</span>
+    </li>
+    <li>
+      <span class="badge badge-slate">Low</span>
+      <span><strong>db-harden.sql REVOKE not auto-propagated to new audit partitions</strong> — <code>db-harden.sql:22-25</code>: documents that REVOKE does not propagate to monthly partitions; manual step required each month. Consider automating via partition creation trigger.</span>
+    </li>
+    <li>
+      <span class="badge badge-slate">Low</span>
+      <span><strong>Dead YAML query</strong> — <code>workflow.fetch_minute_sheet_timeline</code> defined in queries.yaml but never called via qr.Get(). Adds prepared-statement overhead at startup with no benefit. Remove or wire it.</span>
+    </li>
+    <li>
+      <span class="badge badge-slate">Low</span>
+      <span><strong>Migration 22 undocumented</strong> — CLAUDE.md documents 21 migrations; migration 22 (org seed) was added without updating the docs baseline.</span>
+    </li>
+    <li>
+      <span class="badge badge-slate">Low</span>
+      <span><strong>Dispatch pages missing requiredRole middleware</strong> — <code>dispatch/inbound/index.vue</code>, <code>dispatch/outbound/index.vue</code>, <code>dispatch/inbound/new.vue</code>: no requiredRole:'RECEPTION' middleware; any authenticated USER can reach reception workflows.</span>
+    </li>
+    <li>
+      <span class="badge badge-slate">Low</span>
+      <span><strong>JWT TTL mismatch</strong> — <code>auth_service.go:28</code>: accessTokenDuration=30min but <code>auth.go:93</code> advertises <code>expires_in:900</code> (15min). Correct the advertised value.</span>
+    </li>
+  </ul>
+</div>
+
+
+<!-- ============================================================ SECTION 7: STATISTICS TABLE ============================================================ -->
+<div class="section-title">Project Statistics</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Value</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Total Vue pages</td>
+          <td>19</td>
+          <td><span class="stats-status">✅ Matches plan (19 expected)</span></td>
+        </tr>
+        <tr>
+          <td>Pages fully complete</td>
+          <td>18</td>
+          <td><span class="stats-status">✅</span></td>
+        </tr>
+        <tr>
+          <td>Pages stub / partial</td>
+          <td>1 (admin/reports — chart panels stubbed)</td>
+          <td><span class="stats-status">⚠️</span></td>
+        </tr>
+        <tr>
+          <td>Vue components</td>
+          <td>12 (6 blocks, 3 layout, 3 shared)</td>
+          <td><span class="stats-status">✅</span></td>
+        </tr>
+        <tr>
+          <td>Go packages</td>
+          <td>17 (49 production source files + 2 integration test files = 51 total)</td>
+          <td><span class="stats-status">✅</span></td>
+        </tr>
+        <tr>
+          <td>Repository implementations (real)</td>
+          <td>9/10</td>
+          <td><span class="stats-status">⚠️ (minute_sheet_repo.Approve is a documented no-op)</span></td>
+        </tr>
+        <tr>
+          <td>Repository implementations (stub)</td>
+          <td>1 (MinuteSheet.Approve)</td>
+          <td><span class="stats-status">⚠️</span></td>
+        </tr>
+        <tr>
+          <td>Unit tests passing</td>
+          <td>~16 across 5 packages (auth: ~8, workflow: 4, governance: 3, worker: 1)</td>
+          <td><span class="stats-status">✅ (0 failing)</span></td>
+        </tr>
+        <tr>
+          <td>Packages with no tests</td>
+          <td>7 (api, api/middleware, config, database, database/repos, rbac, transport)</td>
+          <td><span class="stats-status">⚠️</span></td>
+        </tr>
+        <tr>
+          <td>SQL migrations (up)</td>
+          <td>22 (21 original + migration 22 org seed)</td>
+          <td><span class="stats-status">✅ All paired with down migrations</span></td>
+        </tr>
+        <tr>
+          <td>Migrations using template syntax</td>
+          <td>42/44 (correct — extensions-only migration 01 skips templates)</td>
+          <td><span class="stats-status">✅</span></td>
+        </tr>
+        <tr>
+          <td>queries.yaml groups</td>
+          <td>11 found / 13 expected (users group absent, config group absent)</td>
+          <td><span class="stats-status">⚠️</span></td>
+        </tr>
+        <tr>
+          <td>Named queries defined in YAML</td>
+          <td>48</td>
+          <td><span class="stats-status">✅</span></td>
+        </tr>
+        <tr>
+          <td>Dangling qr.Get() keys</td>
+          <td>0</td>
+          <td><span class="stats-status">✅</span></td>
+        </tr>
+        <tr>
+          <td>Routes registered</td>
+          <td>~48 / ~58 (85%)</td>
+          <td><span class="stats-status">⚠️ ~9 routes missing (Search, Attachments, Notifications, Reports, Settings)</span></td>
+        </tr>
+        <tr>
+          <td>Routes fully functional</td>
+          <td>~33 / ~48 registered (69%)</td>
+          <td><span class="stats-status">⚠️</span></td>
+        </tr>
+        <tr>
+          <td>Security controls passing</td>
+          <td>18/25</td>
+          <td><span class="stats-status">⚠️ 72%</span></td>
+        </tr>
+        <tr>
+          <td>Inline SQL violations</td>
+          <td>~30+ instances (user_repo, session_repo, password_reset_repo, routing_rule_repo partial, config/handler.go, dispatch_service.go)</td>
+          <td><span class="stats-status">⚠️ Should be 0</span></td>
+        </tr>
+        <tr>
+          <td>Palette CSS violations (text-slate/text-indigo/bg-white etc.)</td>
+          <td>0</td>
+          <td><span class="stats-status">✅ Task 05 migration clean</span></td>
+        </tr>
+        <tr>
+          <td>localStorage violations</td>
+          <td>0 (1 match is a code comment explaining why NOT used)</td>
+          <td><span class="stats-status">✅</span></td>
+        </tr>
+        <tr>
+          <td>K8s manifests</td>
+          <td>13 (baseline expected 9)</td>
+          <td><span class="stats-status">✅ Exceeds plan</span></td>
+        </tr>
+        <tr>
+          <td>Operational scripts</td>
+          <td>6/6 present and non-empty</td>
+          <td><span class="stats-status">✅</span></td>
+        </tr>
+        <tr>
+          <td>GitHub Actions workflows</td>
+          <td>3/3 (ci.yml, cd.yml, security.yml)</td>
+          <td><span class="stats-status">✅</span></td>
+        </tr>
+        <tr>
+          <td>TypeScript errors (pnpm build)</td>
+          <td>0</td>
+          <td><span class="stats-status">✅</span></td>
+        </tr>
+        <tr>
+          <td>Semantic token usages</td>
+          <td>365 matches</td>
+          <td><span class="stats-status">✅ Healthy theming adoption</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ============================================================ SECTION 8: QUALITATIVE COMMENTARY ============================================================ -->
+<div class="section-title">Expert Commentary</div>
+
+<div class="card" style="margin-bottom:1rem;">
+  <h3>🎨 Frontend Design Assessment — Agent 1</h3>
+  <blockquote>
+    The Aethel frontend is a high-quality, production-credible UI prototype demonstrating disciplined component reuse and a mature design system. The three-layer CSS variable architecture is correctly implemented, the semantic token migration was thorough, and the auth layer (useAuth.ts + fetch.ts + auth.client.ts) is production-grade — significantly above expectations for a Phase 1 prototype. The primary weakness is accessibility: zero ARIA attributes on custom interactive elements is a hard WCAG 2.1 AA failure. The reports.vue chart stubs present a slightly unfinished impression. For Phase 2, the most critical wiring task is connecting useRuntimeConfig.refresh() to the real GET /api/v1/config endpoint — the shape already matches the API contract exactly.
+    <cite>— Agent 1 · Frontend Auditor · 2026-06-05</cite>
+  </blockquote>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+  <h3>⚙️ Go Backend Architecture Assessment — Agent 2</h3>
+  <blockquote>
+    The architecture is genuinely production-quality for a sprint project. Security fundamentals are correct throughout: Argon2id passwords, HMAC-signed JWTs (no org claim needed), atomic refresh token rotation, CSRF double-submit cookies with crypto/subtle.ConstantTimeCompare, and layered rate limiting. The audit ledger with SHA-256 checksum chaining is correctly implemented with matching hash formulas in both workflow_service.go and green_note_repo.go. The main technical debt is the split SQL discipline: auth-critical repos (user_repo, session_repo, password_reset_repo) predate the QueryRegistry pattern and were never migrated. Combined with dispatch_service.Create() bypassing its own repo abstraction to write SQL inline in a transaction, the codebase has an inconsistent SQL management story that will complicate future auditing.
+    <cite>— Agent 2 · Go Backend Auditor · 2026-06-05</cite>
+  </blockquote>
+</div>
+
+<div class="card">
+  <h3>🔒 Security Assessment — Agent 4</h3>
+  <blockquote>
+    The Aethel backend demonstrates sophisticated security thinking — Argon2id is correct and complete, session rotation is properly atomic, and the CSRF double-submit pattern is implemented precisely including ConstantTimeCompare. The RBAC system correctly isolates admin.audit to SYS_ADMIN only. However, four high/medium findings reduce the posture: the absence of a CSP header combined with unguarded v-html in BlockRichText creates a viable stored XSS path, the CreateUser endpoint allows privilege escalation by any admin, the password reset flow accepts single-character passwords, and the fallback JWT secret is a production time bomb. The hardcoded fallback secret should be replaced with a hard startup failure.
+    <cite>— Agent 4 · Security Auditor · 2026-06-05</cite>
+  </blockquote>
+</div>
+
+
+<!-- ============================================================ SECTION 9: DETAILED FINDINGS (COLLAPSIBLE) ============================================================ -->
+<div class="section-title">Detailed Agent Findings</div>
+
+<details>
+  <summary>🎨 Agent 1 — Frontend Audit (aethel-view/)</summary>
+  <div class="details-body">
+    <p style="margin-bottom:1rem;color:var(--slate-500);font-size:0.85rem;">Full raw findings from the frontend audit agent. Audited at 2026-06-05. Files discovered: 19 .vue pages, 12 .vue components, 5 .ts composables, 2 .ts plugins, 2 .ts middleware.</p>
+
+    <p><strong>Build Status:</strong> ✅ pnpm build: Success · 0 TypeScript errors · 27.4 MB (10.1 MB gzip) · Nitro SSR server bundled correctly</p>
+    <br/>
+
+    <h4 style="margin:1rem 0 0.5rem;">Pages Summary</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Page</th><th>Lines</th><th>Status</th><th>Data Source</th><th>Semantic CSS</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>/</code> (index.vue)</td><td>8</td><td>✅ Done</td><td>—</td><td>Clean</td><td>Redirect-only; layout:false + navigateTo('/auth/login')</td></tr>
+          <tr><td><code>/auth/login</code></td><td>159</td><td>✅ Done</td><td>Real API (useAuth)</td><td>Clean</td><td>Loading state, error handling, password reset flow</td></tr>
+          <tr><td><code>/dashboard</code></td><td>263</td><td>✅ Done</td><td>Mock</td><td>Minor*</td><td>Responsive table, filter tabs, live pulse indicator</td></tr>
+          <tr><td><code>/dispatch/inbound</code></td><td>117</td><td>✅ Done</td><td>Mock</td><td>Clean</td><td>Minimal list, no filter/search</td></tr>
+          <tr><td><code>/dispatch/inbound/new</code></td><td>228</td><td>✅ Done</td><td>Mock (submit)</td><td>Clean</td><td>Full intake form</td></tr>
+          <tr><td><code>/dispatch/outbound</code></td><td>198</td><td>✅ Done</td><td>Mock</td><td>Minor*</td><td>bg-violet-100/text-violet-600 palette</td></tr>
+          <tr><td><code>/documents/[id]</code></td><td>679</td><td>✅ Done</td><td>Mock</td><td>Minor*</td><td>Rich detail page; some bg-emerald-100/text-rose-500</td></tr>
+          <tr><td><code>/my-documents</code></td><td>161</td><td>✅ Done</td><td>Mock</td><td>Minor*</td><td>bg-rose-100/text-rose-600/text-emerald-300</td></tr>
+          <tr><td><code>/outgoing/new</code></td><td>150</td><td>✅ Done</td><td>Mock (submit)</td><td>Clean</td><td>Submit outgoing form</td></tr>
+          <tr><td><code>/search</code></td><td>265</td><td>✅ Done</td><td>Mock</td><td>Clean</td><td>Full-text + multi-filter search</td></tr>
+          <tr><td><code>/admin/users</code></td><td>222</td><td>✅ Done</td><td>Mock</td><td>Minor*</td><td>User table + create modal</td></tr>
+          <tr><td><code>/admin/routing-rules</code></td><td>360</td><td>✅ Done</td><td>Mock</td><td>Minor*</td><td>Multi-stop routing rules CRUD</td></tr>
+          <tr><td><code>/admin/document-types</code></td><td>235</td><td>✅ Done</td><td>Mock</td><td>Clean</td><td>Card grid + add/edit/delete modals</td></tr>
+          <tr><td><code>/admin/escalation</code></td><td>265</td><td>✅ Done</td><td>Mock</td><td>Clean</td><td>Rule table + add/edit modal; toggle-per-row</td></tr>
+          <tr><td><code>/admin/audit-log</code></td><td>297</td><td>✅ Done</td><td>Mock (inline)</td><td>Clean</td><td>Filter bar, expandable rows, pagination</td></tr>
+          <tr><td><code>/admin/reports</code></td><td>191</td><td>🔄 Partial</td><td>Mock</td><td>Clean</td><td>KPI cards done; chart panels are permanent stubs</td></tr>
+          <tr><td><code>/admin/settings</code></td><td>249</td><td>✅ Done</td><td>Runtime config</td><td>Clean</td><td>Org profile, feature toggles, DB alias read-only</td></tr>
+          <tr><td><code>/admin/branding</code></td><td>310</td><td>✅ Done</td><td>Runtime config</td><td>Clean</td><td>Color picker, font/palette select, live preview mini-shell</td></tr>
+          <tr><td><code>/admin/navigation</code></td><td>272</td><td>✅ Done</td><td>Runtime config</td><td>Clean</td><td>Nav tree editor with inline label edit, visibility, reorder</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <br/>
+    <p style="font-size:0.8rem;color:var(--slate-500);">*Minor: pages are clean of Task 05 migration targets (text-slate/text-indigo/bg-slate/bg-white) but use functional palette classes for urgency/status dot colors — documented as intentional in CLAUDE.md</p>
+    <br/>
+
+    <h4 style="margin:1rem 0 0.5rem;">Design System Compliance</h4>
+    <ul style="font-size:0.875rem;color:var(--slate-700);line-height:1.8;padding-left:1.5rem;">
+      <li>Primary palette violations (slate/indigo/gray/zinc): <strong>0 files — CLEAN</strong></li>
+      <li>Functional palette (emerald/rose/sky/amber/violet for urgency/status): <strong>7 files — expected by design</strong></li>
+      <li>Raw &lt;button&gt; without aria-label: <strong>5 instances</strong> — auth/login.vue:85, dashboard.vue:139-151, WorkspaceSidebar.vue:103, WorkspaceSidebar.vue:226, navigation.vue:186</li>
+      <li>localStorage violations: <strong>0</strong> (1 match is a comment)</li>
+      <li>Semantic token usages: <strong>365 matches</strong></li>
+    </ul>
+
+    <br/>
+    <h4 style="margin:1rem 0 0.5rem;">UI/UX Quality Scores</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Category</th><th>Rating</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Accessibility (a11y)</td><td>⭐ Needs Work</td><td>Zero ARIA attributes; WCAG 2.1 AA blocker</td></tr>
+          <tr><td>Design Consistency</td><td>⭐⭐⭐ Excellent</td><td>All 19 pages share identical header/table/modal patterns</td></tr>
+          <tr><td>UX Flow &amp; Logic</td><td>⭐⭐ Good</td><td>5 UX issues found (see Needs Improvement section)</td></tr>
+          <tr><td>Mobile Responsiveness</td><td>⭐⭐ Good</td><td>Drawer pattern implemented; global search hidden on mobile</td></tr>
+          <tr><td>Aesthetic Quality</td><td>⭐⭐⭐ Excellent</td><td>Professional SaaS-grade; live preview mini-shell is polished</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <br/>
+    <p><strong>Frontend Completion Score: 97% &nbsp;|&nbsp; UI/UX Quality Score: 73%</strong></p>
+  </div>
+</details>
+
+<details>
+  <summary>⚙️ Agent 2 — Backend Audit (aethel-core/)</summary>
+  <div class="details-body">
+    <p style="margin-bottom:1rem;color:var(--slate-500);font-size:0.85rem;">Full raw findings from the backend audit agent. Audited at 2026-06-05. Go files discovered: 51 (49 production source + 2 integration test files).</p>
+
+    <h4 style="margin:1rem 0 0.5rem;">Package Inventory</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Package</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>cmd/aethel</code></td><td>✅ Done</td><td>Cobra CLI: serve, migrate (up/down/status/validate), bootstrap-admin</td></tr>
+          <tr><td><code>internal/api</code></td><td>✅ Done</td><td>9-layer middleware stack, chi router, full route tree</td></tr>
+          <tr><td><code>internal/api/handlers</code></td><td>✅ Done</td><td>auth, dispatch, workflow, governance, admin, helpers — all implemented</td></tr>
+          <tr><td><code>internal/api/middleware</code></td><td>✅ Done</td><td>csrf, rate_limiter, security_headers — production-quality</td></tr>
+          <tr><td><code>internal/api/docs</code></td><td>✅ Done</td><td>OpenAPI 3.1 + Scalar UI via go:embed</td></tr>
+          <tr><td><code>internal/app</code></td><td>✅ Done</td><td>Boot-time OrgID singleton</td></tr>
+          <tr><td><code>internal/audit</code></td><td>✅ Done</td><td>Interface + DB-backed implementation</td></tr>
+          <tr><td><code>internal/blueprint</code></td><td>✅ Done</td><td>YAML blueprint parsing</td></tr>
+          <tr><td><code>internal/config</code></td><td>✅ Done</td><td>5-min TTL cache + full PATCH endpoints</td></tr>
+          <tr><td><code>internal/database</code></td><td>✅ Done</td><td>connect, migrator, query_registry, blueprint_context</td></tr>
+          <tr><td><code>internal/database/repos</code></td><td>🔄 Mixed</td><td>10 repo files — mix of QueryRegistry-backed and inline SQL</td></tr>
+          <tr><td><code>internal/domain</code></td><td>✅ Done</td><td>Complete domain types + interfaces</td></tr>
+          <tr><td><code>internal/integration</code></td><td>✅ Done</td><td>Integration tests (build-tagged, skip without DB)</td></tr>
+          <tr><td><code>internal/rbac</code></td><td>✅ Done</td><td>Permission map, context helpers</td></tr>
+          <tr><td><code>internal/service</code></td><td>🔄 Mixed</td><td>6 service files — escalation ruleApplies is logic stub</td></tr>
+          <tr><td><code>internal/transport</code></td><td>✅ Done</td><td>SSE broker</td></tr>
+          <tr><td><code>internal/worker</code></td><td>✅ Done</td><td>Ticker-based escalation evaluator + test</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <br/>
+    <h4 style="margin:1rem 0 0.5rem;">Repository Layer Detail</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Repo File</th><th>Exists</th><th>Real impl</th><th>Zero inline SQL</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>audit_repo.go</code></td><td>✅</td><td>✅</td><td>✅</td><td>QueryRegistry; Write+Query+VerifyChain all real</td></tr>
+          <tr><td><code>dispatch_repo.go</code></td><td>✅</td><td>✅</td><td>✅</td><td>Full CRUD via QueryRegistry</td></tr>
+          <tr><td><code>dispatch_event_repo.go</code></td><td>✅</td><td>✅</td><td>✅</td><td>QueryRegistry-backed</td></tr>
+          <tr><td><code>escalation_rule_repo.go</code></td><td>✅</td><td>✅</td><td>✅</td><td>QueryRegistry; elegant rowScanner interface pattern</td></tr>
+          <tr><td><code>green_note_repo.go</code></td><td>✅</td><td>✅</td><td>✅</td><td>TX + SELECT FOR UPDATE; exemplary concurrency</td></tr>
+          <tr><td><code>minute_sheet_repo.go</code></td><td>✅</td><td>⚠️ Partial</td><td>✅</td><td>Approve() is a documented no-op pending migration-22</td></tr>
+          <tr><td><code>password_reset_repo.go</code></td><td>✅</td><td>✅</td><td>❌</td><td>ALL methods use inline SQL strings</td></tr>
+          <tr><td><code>routing_rule_repo.go</code></td><td>✅</td><td>✅</td><td>❌</td><td>Create/Update/Delete use inline SQL; List/GetByID use QueryRegistry</td></tr>
+          <tr><td><code>session_repo.go</code></td><td>✅</td><td>✅</td><td>❌</td><td>ALL methods use inline SQL; no QueryRegistry at all</td></tr>
+          <tr><td><code>user_repo.go</code></td><td>✅</td><td>✅</td><td>❌</td><td>ALL methods use inline SQL; most critical-path repo</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <br/>
+    <h4 style="margin:1rem 0 0.5rem;">Service Layer</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Service</th><th>audit.Writer</th><th>Methods</th><th>Issues</th></tr></thead>
+        <tbody>
+          <tr><td><code>auth_service.go</code></td><td>✅</td><td>✅ Full</td><td>None</td></tr>
+          <tr><td><code>dispatch_service.go</code></td><td>✅</td><td>⚠️ Partial</td><td>Create() bypasses repo, uses raw tx.ExecContext</td></tr>
+          <tr><td><code>workflow_service.go</code></td><td>✅</td><td>✅ Full</td><td>None</td></tr>
+          <tr><td><code>escalation_service.go</code></td><td>✅</td><td>⚠️ Partial</td><td>ruleApplies() ignores dispatch fields — logic stub</td></tr>
+          <tr><td><code>governance_service.go</code></td><td>n/a</td><td>✅ Full</td><td>None</td></tr>
+          <tr><td><code>bootstrap_service.go</code></td><td>n/a</td><td>✅ Full</td><td>None</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <br/>
+    <p><strong>Route Coverage:</strong> ~48 registered / ~58 in spec (~85%). Fully functional: ~33 (~69%). Missing: Search, ListAttachments, UploadAttachment, DeleteAttachment, GetReports, GetSettings, UpdateSettings, GET /notifications, PATCH /notifications/{id}/read</p>
+    <br/>
+    <p><strong>Tests:</strong> ~16 passing across 5 packages. 0 failing. 7 packages have no tests.</p>
+    <br/>
+    <p><strong>Backend Completion Score: 75% &nbsp;|&nbsp; Go Code Quality Score: 78%</strong></p>
+  </div>
+</details>
+
+<details>
+  <summary>🗄️ Agent 3 — Database Audit</summary>
+  <div class="details-body">
+    <p style="margin-bottom:1rem;color:var(--slate-500);font-size:0.85rem;">Full raw findings from the database audit agent. Audited at 2026-06-05. Migration files found: 22 up + 22 down.</p>
+
+    <h4 style="margin:1rem 0 0.5rem;">Migration Coverage</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Table</th><th>Migration #</th><th>Status</th><th>Discrepancies</th></tr></thead>
+        <tbody>
+          <tr><td>organizations</td><td>02</td><td>✅</td><td>None</td></tr>
+          <tr><td>departments</td><td>03</td><td>✅</td><td>None</td></tr>
+          <tr><td>users, user_sessions, password_reset_tokens, notification_preferences</td><td>04</td><td>✅</td><td>None</td></tr>
+          <tr><td>document_types</td><td>05</td><td>✅</td><td>None</td></tr>
+          <tr><td>dispatches</td><td>06</td><td>✅</td><td>None</td></tr>
+          <tr><td>dispatch_attachments</td><td>07</td><td>✅</td><td>None</td></tr>
+          <tr><td>dispatch_events</td><td>08</td><td>✅</td><td>No FK on routing_rule_id — intentional (event history must survive rule deletion)</td></tr>
+          <tr><td>routing_rules</td><td>09</td><td>✅</td><td>None</td></tr>
+          <tr><td>routing_rule_conditions</td><td>10</td><td>✅</td><td>None</td></tr>
+          <tr><td>routing_rule_destinations</td><td>11</td><td>✅</td><td>None</td></tr>
+          <tr><td>minute_sheets</td><td>12</td><td>✅</td><td>None</td></tr>
+          <tr><td>green_notes</td><td>13</td><td>✅</td><td>None</td></tr>
+          <tr><td>notifications</td><td>14</td><td>✅</td><td>None</td></tr>
+          <tr><td>escalation_rules</td><td>15</td><td>✅</td><td>None</td></tr>
+          <tr><td>system_settings</td><td>16</td><td>✅</td><td>None</td></tr>
+          <tr><td>branding_configs</td><td>17+21</td><td>✅</td><td>Composite PK slightly simplified in ER diagram</td></tr>
+          <tr><td>audit_ledger (partitioned)</td><td>18+19</td><td>✅</td><td>Composite PK (id, created_at) correct for PARTITION BY RANGE</td></tr>
+          <tr><td>updated_at triggers</td><td>20</td><td>✅</td><td>Covers 8 tables — does NOT include branding_configs or system_settings (minor gap)</td></tr>
+          <tr><td>branding_configs extension</td><td>21</td><td>✅</td><td>Adds neutral_palette, font_family, wordmark with idempotent UPDATE seed</td></tr>
+          <tr><td>organizations seed (NEW)</td><td>22</td><td>✅</td><td>ON CONFLICT DO NOTHING; undocumented in CLAUDE.md</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <br/>
+    <h4 style="margin:1rem 0 0.5rem;">queries.yaml Coverage</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Group</th><th>Exists</th><th>Query Count</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>dispatch</td><td>✅</td><td>11</td><td>None (1 legacy placeholder)</td></tr>
+          <tr><td>dispatch_event</td><td>✅</td><td>2</td><td>None</td></tr>
+          <tr><td>routing_rule</td><td>✅</td><td>2</td><td>None</td></tr>
+          <tr><td>workflow</td><td>✅</td><td>1</td><td>1 dead query — never called via qr.Get()</td></tr>
+          <tr><td>minute_sheet</td><td>✅</td><td>3</td><td>None</td></tr>
+          <tr><td>green_note</td><td>✅</td><td>4</td><td>1 never called via qr.Get()</td></tr>
+          <tr><td>auth</td><td>✅</td><td>10</td><td>Bypassed — user_repo uses inline SQL</td></tr>
+          <tr><td>session</td><td>✅</td><td>4</td><td>Bypassed — session_repo uses inline SQL</td></tr>
+          <tr><td>pw_reset</td><td>✅</td><td>3</td><td>Bypassed — password_reset_repo uses inline SQL</td></tr>
+          <tr><td>governance</td><td>✅</td><td>4</td><td>None</td></tr>
+          <tr><td>escalation_rules</td><td>✅</td><td>4</td><td>None</td></tr>
+          <tr><td>users</td><td>❌</td><td>0</td><td>All user queries are inline in user_repo.go</td></tr>
+          <tr><td>notifications</td><td>❌</td><td>0</td><td>No YAML queries for notifications table at all</td></tr>
+          <tr><td>config</td><td>❌</td><td>0</td><td>Config queries are inline in config/loader.go</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <br/>
+    <h4 style="margin:1rem 0 0.5rem;">Critical Issues</h4>
+    <div class="alert-box critical" style="margin-bottom:0.5rem;">
+      <span class="alert-icon">🔴</span>
+      <div class="alert-body">
+        <strong>Session expiry regression (MEDIUM)</strong>
+        session_repo.go::GetByTokenHash inline SQL does NOT filter <code>WHERE expires_at &gt; now()</code>. YAML definition session.get_session_by_token_hash DOES include this filter. Expired sessions may be considered valid by auth middleware.
+      </div>
+    </div>
+    <div class="alert-box warn" style="margin-bottom:0.5rem;">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-body">
+        <strong>Dual SQL sources for auth/session/pw_reset (MEDIUM)</strong>
+        Inline SQL in user_repo.go GetByEmail does NOT scope by organization_id (inline: <code>WHERE email_address = $1</code>, YAML: <code>WHERE organization_id = $1 AND email_address = $2 AND is_active = true</code>) — behavioral gap, not just style.
+      </div>
+    </div>
+
+    <br/>
+    <p><strong>Database Completion Score: 91%</strong></p>
+    <p style="font-size:0.8rem;color:var(--slate-500);">Total queries defined: 48 · Groups found: 11/13 · Zero dangling qr.Get() keys · 42/44 migrations use templates</p>
+  </div>
+</details>
+
+<details>
+  <summary>🔒 Agent 4 — Security Audit</summary>
+  <div class="details-body">
+    <p style="margin-bottom:1rem;color:var(--slate-500);font-size:0.85rem;">Full raw findings from the security audit agent. Audited at 2026-06-05. Security architecture doc verified.</p>
+
+    <h4 style="margin:1rem 0 0.5rem;">Authentication Controls</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Control</th><th>Status</th><th>Evidence</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>JWT algorithm HS256</td><td>✅</td><td>auth_service.go:246</td><td>Only HS256 implemented; RS256 in docs not wired</td></tr>
+          <tr><td>JWT claims (no org)</td><td>✅</td><td>auth_service.go:229,239-244</td><td>Claims: sub, role, iat, exp, jti</td></tr>
+          <tr><td>Argon2id ≥64MiB/3iter/4threads</td><td>✅</td><td>auth_service.go:22-27</td><td>defaultMemoryKiB=65536, Iterations=3, Parallelism=4</td></tr>
+          <tr><td>Access token NOT in localStorage</td><td>✅</td><td>useAuth.ts:21</td><td>In-memory via useState; comment cites XSS risk</td></tr>
+          <tr><td>Refresh token httpOnly cookie</td><td>✅</td><td>handlers/auth.go:69-77</td><td>HttpOnly:true, SameSite:Strict, scoped to /api/v1/auth/refresh</td></tr>
+          <tr><td>Refresh token rotation atomic</td><td>✅</td><td>session_repo.go:65-85</td><td>RotateSession wraps DELETE+INSERT in BeginTx/Commit</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <br/>
+    <h4 style="margin:1rem 0 0.5rem;">Security Headers</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Header</th><th>Present</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>X-Content-Type-Options</td><td>✅ nosniff</td><td></td></tr>
+          <tr><td>X-Frame-Options</td><td>✅ DENY</td><td></td></tr>
+          <tr><td>Strict-Transport-Security</td><td>✅ conditional</td><td>max-age=31536000; includeSubDomains (HTTPS only)</td></tr>
+          <tr><td>Content-Security-Policy</td><td>❌ MISSING</td><td>Critical gap — especially given v-html usage in BlockRichText.vue</td></tr>
+          <tr><td>Referrer-Policy</td><td>✅</td><td>strict-origin-when-cross-origin</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <br/>
+    <h4 style="margin:1rem 0 0.5rem;">Full Security Finding List (10 items)</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Severity</th><th>Location</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><span class="badge badge-red">🔴 Critical</span></td><td>security_headers.go</td><td>Missing Content-Security-Policy header</td></tr>
+          <tr><td>2</td><td><span class="badge badge-red">🔴 Critical</span></td><td>BlockRichText.vue:54</td><td>v-html="content" without DOMPurify — stored XSS in admin pages</td></tr>
+          <tr><td>3</td><td><span class="badge badge-red">🔴 Critical</span></td><td>auth_service.go:233-235, server.go:241-243</td><td>Hardcoded fallback JWT secret "dev-secret-change-in-production"</td></tr>
+          <tr><td>4</td><td><span class="badge badge-red">🔴 Critical</span></td><td>All handlers</td><td>No http.MaxBytesReader — JSON body DoS on all endpoints</td></tr>
+          <tr><td>5</td><td><span class="badge badge-yellow">🟡 Important</span></td><td>admin.go:53-60</td><td>CreateUser accepts role:"SYS_ADMIN" from JSON — any admin can privilege-escalate</td></tr>
+          <tr><td>6</td><td><span class="badge badge-yellow">🟡 Important</span></td><td>auth_service.go:208-226</td><td>ConfirmPasswordReset has no minimum password length validation</td></tr>
+          <tr><td>7</td><td><span class="badge badge-yellow">🟡 Important</span></td><td>rbac/middleware.go:55-78</td><td>RBAC Require does not write PERMISSION_DENIED or RBAC_ELEVATION_ATTEMPT audit events</td></tr>
+          <tr><td>8</td><td><span class="badge badge-slate">🟢 Low</span></td><td>auth_service.go:28, auth.go:93</td><td>TTL mismatch: JWT exp=30min but expires_in=900s (15min)</td></tr>
+          <tr><td>9</td><td><span class="badge badge-slate">🟢 Low</span></td><td>rate_limiter.go:107-110</td><td>XFF IP from untrusted first entry; rate limit bypass via header spoofing</td></tr>
+          <tr><td>10</td><td><span class="badge badge-slate">🟢 Low</span></td><td>db-harden.sql:22-25</td><td>REVOKE not auto-propagated to new monthly audit partitions</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <br/>
+    <p><strong>Security Score: 72% (18/25 controls pass)</strong></p>
+    <p><strong>Critical findings (4 items requiring immediate action before production deployment)</strong></p>
+  </div>
+</details>
+
+<details>
+  <summary>🚀 Agent 5 — DevOps Audit</summary>
+  <div class="details-body">
+    <p style="margin-bottom:1rem;color:var(--slate-500);font-size:0.85rem;">Full raw findings from the DevOps audit agent. Audited at 2026-06-05. Infra files discovered: 30 (2 Dockerfiles, 2 docker-compose files, 13 k8s manifests, 6 scripts, 3 GitHub Actions workflows, 1 Makefile).</p>
+
+    <div class="alert-box critical">
+      <span class="alert-icon">🔴</span>
+      <div class="alert-body">
+        <strong>CRITICAL DOCKER BUG — Every production image build FAILS</strong>
+        <code>aethel-core/Dockerfile:29</code>: <code>COPY ../blueprints ./blueprints</code> references a path OUTSIDE the build context (<code>./aethel-core</code>). Dev compose works only because blueprints are volume-mounted at runtime. Fix: move Dockerfile to workspace root or copy blueprints into context before docker build.
+      </div>
+    </div>
+
+    <br/>
+    <h4 style="margin:1rem 0 0.5rem;">Docker Files</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Artifact</th><th>Multi-stage</th><th>Distroless</th><th>No hardcoded secrets</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>aethel-core/Dockerfile</td><td>✅</td><td>✅ gcr.io/distroless/static-debian12</td><td>✅</td><td>nonroot:nonroot uid 65532; CGO_ENABLED=0; -ldflags="-w -s" — CRITICAL BUG: COPY ../blueprints</td></tr>
+          <tr><td>aethel-view/Dockerfile</td><td>✅</td><td>⚠️ node:20-alpine (not distroless)</td><td>✅</td><td>Creates aethel user; minimal but not distroless</td></tr>
+          <tr><td>docker-compose.yml</td><td>N/A</td><td>N/A</td><td>✅</td><td>:? mandatory guards; Postgres healthcheck + depends_on service_healthy</td></tr>
+          <tr><td>docker-compose.prod.yml</td><td>N/A</td><td>N/A</td><td>✅</td><td>Removes postgres host port; adds network isolation; resource limits</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <br/>
+    <h4 style="margin:1rem 0 0.5rem;">Kubernetes Manifests (13/13)</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Manifest</th><th>Exists</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>k8s/namespace.yaml</td><td>✅</td><td>Defines aethel-workspace</td></tr>
+          <tr><td>k8s/postgres/statefulset.yaml</td><td>✅</td><td>Liveness+readiness probes, 20Gi PVC, secrets from postgres-secret. storageClassName: TODO</td></tr>
+          <tr><td>k8s/postgres/service.yaml</td><td>✅</td><td>ClusterIP :5432</td></tr>
+          <tr><td>k8s/postgres/secret.yaml</td><td>✅</td><td>PLACEHOLDER with REPLACE_ME — kubectl create secret instructions present</td></tr>
+          <tr><td>k8s/backend/deployment.yaml</td><td>✅</td><td>2 replicas, RollingUpdate, initContainer waits for postgres, readOnlyRootFilesystem: true, drop ALL caps, uid 65532</td></tr>
+          <tr><td>k8s/backend/hpa.yaml</td><td>✅</td><td>autoscaling/v2, CPU 70%/Mem 80%, min 2/max 10</td></tr>
+          <tr><td>k8s/backend/configmap.yaml</td><td>✅</td><td>Non-secret env only</td></tr>
+          <tr><td>k8s/backend/service.yaml</td><td>✅</td><td>ClusterIP :8080</td></tr>
+          <tr><td>k8s/backend/secret.yaml</td><td>✅</td><td>PLACEHOLDER with REPLACE_ME</td></tr>
+          <tr><td>k8s/frontend/deployment.yaml</td><td>✅</td><td>2 replicas, probes on /. Missing: readOnlyRootFilesystem: true (backend has it)</td></tr>
+          <tr><td>k8s/frontend/hpa.yaml</td><td>✅</td><td>Same profile as backend HPA</td></tr>
+          <tr><td>k8s/frontend/service.yaml</td><td>✅</td><td>ClusterIP :3000</td></tr>
+          <tr><td>k8s/ingress.yaml</td><td>✅</td><td>nginx, /api/* → backend, /* → frontend. TLS: TODO cert-manager</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <br/>
+    <h4 style="margin:1rem 0 0.5rem;">GitHub Actions Workflows</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Workflow</th><th>Exists</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>ci.yml</td><td>✅</td><td>PR + push to main. 3 parallel jobs: go vet+test-race+golangci-lint; pnpm build+vitest; yamllint. ⚠️ No PostgreSQL service in test-backend job</td></tr>
+          <tr><td>cd.yml</td><td>✅</td><td>Push to main + manual. GHCR multi-arch (amd64+arm64), SHA+latest tags. ⚠️ No migration step before kubectl set image</td></tr>
+          <tr><td>security.yml</td><td>✅</td><td>Weekly Monday + push to main. Trivy FS+image, govulncheck, gosec. All SARIF uploaded.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <br/>
+    <h4 style="margin:1rem 0 0.5rem;">Scripts (6/6)</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Script</th><th>Lines</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>setup-dev.sh</td><td>130</td><td>Checks all deps, copies .env.example, pnpm install --frozen-lockfile. set -euo pipefail</td></tr>
+          <tr><td>health-check.sh</td><td>133</td><td>Checks /health, /ready, frontend HTTP, PostgreSQL (psql→nc fallback), Docker daemon</td></tr>
+          <tr><td>rotate-jwt-secret.sh</td><td>66</td><td>openssl rand -base64 64, printed to stdout only (never written to disk). Multi-env checklist</td></tr>
+          <tr><td>db-backup.sh</td><td>143</td><td>pg_dump | gzip. Optional S3 upload with SSE-AES256. Minor: no backup retention policy</td></tr>
+          <tr><td>k8s-rollout.sh</td><td>189</td><td>Creates migration K8s Job → waits 300s → rolling restart. Correct order (migrate then rollout)</td></tr>
+          <tr><td>db-harden.sh</td><td>17</td><td>Applies db-harden.sql via superuser DSN. REVOKE UPDATE/DELETE on audit_ledger</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <br/>
+    <p><strong>DevOps Completion Score: 88%</strong></p>
+    <p style="font-size:0.8rem;color:var(--slate-500);">30 infra files verified · 13/13 K8s manifests (4 bonus) · All scripts use set -euo pipefail · 30+ Makefile targets with auto-help</p>
+  </div>
+</details>
+
+
+<!-- ============================================================ FOOTER ============================================================ -->
+<footer>
+  <p>Aethel Workspace Audit &nbsp;·&nbsp; 2026-06-05 &nbsp;·&nbsp; Generated by Claude Code Task 15 &nbsp;·&nbsp; 5-agent parallel audit team</p>
+  <p style="margin-top:0.4rem;">Git HEAD: <code>bf9bddc</code> &nbsp;·&nbsp; Branch: dev &nbsp;·&nbsp; Phase 2 — Go Backend (Sprint 2 running)</p>
+  <p style="margin-top:0.4rem;">Overall Score: 84% &nbsp;·&nbsp; Frontend: 97% · Backend: 75% · Database: 91% · Security: 72% · DevOps: 88%</p>
+</footer>
+
+</div><!-- /.container -->
+</body>
+</html>
