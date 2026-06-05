@@ -11,8 +11,10 @@ const statusFilter = ref("");
 const urgencyFilter = ref("");
 const docTypeFilter = ref("");
 
+// Reka UI (Nuxt UI v4) forbids items with value:"" — the empty string is reserved for
+// clearing the model and showing the placeholder. Omit the "All X" sentinel item and
+// use the placeholder prop on USelect instead; the filter logic already treats "" as "no filter".
 const statusOptions = [
-  { label: "All Statuses", value: "" },
   { label: "Pending Assignment", value: "PENDING_ASSIGNMENT" },
   { label: "Under Review", value: "UNDER_REVIEW" },
   { label: "In Transit", value: "IN_TRANSIT" },
@@ -22,14 +24,12 @@ const statusOptions = [
 ];
 
 const urgencyOptions = [
-  { label: "All Urgencies", value: "" },
   { label: "Immediate", value: "IMMEDIATE" },
   { label: "Priority", value: "PRIORITY" },
   { label: "Routine", value: "ROUTINE" },
 ];
 
 const docTypeOptions = [
-  { label: "All Types", value: "" },
   { label: "Audit Report", value: "Audit Report" },
   { label: "Legal Contract", value: "Legal Contract" },
   { label: "Invoice", value: "Invoice" },
@@ -119,18 +119,21 @@ function clearFilters() {
       <USelect
         v-model="statusFilter"
         :items="statusOptions"
+        placeholder="All Statuses"
         size="sm"
         class="w-44"
       />
       <USelect
         v-model="urgencyFilter"
         :items="urgencyOptions"
+        placeholder="All Urgencies"
         size="sm"
         class="w-36"
       />
       <USelect
         v-model="docTypeFilter"
         :items="docTypeOptions"
+        placeholder="All Types"
         size="sm"
         class="w-44"
       />

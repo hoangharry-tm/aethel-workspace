@@ -43,8 +43,11 @@ function handleSearch() {
 }
 
 async function handleLogout() {
-  await logout()
-  await navigateTo('/auth/login', { replace: true })
+  try {
+    await logout()
+  } finally {
+    window.location.replace('/auth/login')
+  }
 }
 
 const profileItems = computed(() => [

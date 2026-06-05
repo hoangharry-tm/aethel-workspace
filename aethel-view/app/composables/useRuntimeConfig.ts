@@ -150,12 +150,6 @@ const defaultConfig: AppRuntimeConfig = {
           to: "/admin/navigation",
           badge: null,
         },
-        {
-          label: "API Reference",
-          icon: "i-lucide-book-open",
-          to: "http://localhost:8080/api/docs",
-          badge: null,
-        },
       ],
     },
   ],

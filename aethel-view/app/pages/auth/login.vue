@@ -101,11 +101,12 @@ async function handlePasswordReset() {
       />
 
       <UButton
-        type="submit"
+        type="button"
         color="primary"
         variant="solid"
         block
         :loading="loading"
+        @click="handleLogin"
       >
         Sign in
       </UButton>

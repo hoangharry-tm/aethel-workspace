@@ -134,6 +134,106 @@ const deliveryModeLabel: Record<string, string> = {
   HAND_DELIVERY: 'Hand Delivery',
   EMAIL: 'Email',
 }
+
+// ── Green Notes ──────────────────────────────────────────────────────────────
+interface GreenNote {
+  id: string
+  sequence: number
+  authorName: string
+  authorRole: string
+  timestamp: string
+  content: string
+  hash: string
+  previousHash: string | null
+  chainIntact: boolean
+}
+
+const greenNotes = ref<GreenNote[]>([
+  {
+    id: 'gn1',
+    sequence: 1,
+    authorName: 'Alice Thornton',
+    authorRole: 'Admin',
+    timestamp: '2026-06-04T08:30:00Z',
+    content: 'Document received and reviewed. Routing confirmed to Finance department per standard protocol for IMMEDIATE priority items. No irregularities noted in the sender\'s credentials.',
+    hash: 'a3f8c21d9e4b7f0512',
+    previousHash: null,
+    chainIntact: true,
+  },
+  {
+    id: 'gn2',
+    sequence: 2,
+    authorName: 'Marcus Webb',
+    authorRole: 'Reception',
+    timestamp: '2026-06-04T09:15:00Z',
+    content: 'Physical handoff to Finance department liaison completed. Document sealed condition confirmed at time of transfer. Recipient signed the custody log.',
+    hash: 'b7e3d54a1c9f02867d',
+    previousHash: 'a3f8c21d9e4b7f0512',
+    chainIntact: true,
+  },
+  {
+    id: 'gn3',
+    sequence: 3,
+    authorName: 'Priya Sharma',
+    authorRole: 'User',
+    timestamp: '2026-06-04T11:00:00Z',
+    content: 'Document reviewed and contents verified against reference number in our procurement register. Approved for processing. No further action required from my end.',
+    hash: 'c1a94e72f0d38b5690',
+    previousHash: 'b7e3d54a1c9f02867d',
+    chainIntact: true,
+  },
+])
+
+const showAddNoteModal = ref(false)
+const newNoteContent = ref('')
+const addNoteLoading = ref(false)
+const showApproveModal = ref(false)
+const approveLoading = ref(false)
+
+const canApproveSheet = computed(() =>
+  currentUser.value.role === 'ADMIN' || currentUser.value.role === 'USER'
+)
+
+function handleOpenAddNote() {
+  newNoteContent.value = ''
+  showAddNoteModal.value = true
+}
+
+async function handleSubmitNote() {
+  if (!newNoteContent.value.trim()) return
+  addNoteLoading.value = true
+  await new Promise<void>(resolve => setTimeout(resolve, 700))
+  const lastNote = greenNotes.value[greenNotes.value.length - 1]
+  const newHash = Math.random().toString(36).slice(2, 20)
+  greenNotes.value.push({
+    id: `gn${greenNotes.value.length + 1}`,
+    sequence: greenNotes.value.length + 1,
+    authorName: currentUser.value.name,
+    authorRole: currentUser.value.role,
+    timestamp: new Date().toISOString(),
+    content: newNoteContent.value.trim(),
+    hash: newHash,
+    previousHash: lastNote?.hash ?? null,
+    chainIntact: true,
+  })
+  addNoteLoading.value = false
+  showAddNoteModal.value = false
+  newNoteContent.value = ''
+  toast.add({ title: 'Note added', description: 'Your note has been appended to the minute sheet.', color: 'success', icon: 'i-lucide-check-circle' })
+}
+
+async function handleApproveSheet() {
+  approveLoading.value = true
+  await new Promise<void>(resolve => setTimeout(resolve, 800))
+  approveLoading.value = false
+  showApproveModal.value = false
+  toast.add({ title: 'Sheet approved', description: 'Minute sheet has been approved and locked.', color: 'success', icon: 'i-lucide-check-circle' })
+}
+
+const tabItems = [
+  { label: 'Document Details', slot: 'details' as const },
+  { label: 'Green Notes', slot: 'notes' as const },
+]
 </script>
 
 <template>
@@ -152,168 +252,261 @@ const deliveryModeLabel: Record<string, string> = {
       </h1>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      <!-- Left panel: 3/5 -->
-      <div class="lg:col-span-3 space-y-4">
-        <div class="bg-surface rounded-xl border border-border-base p-6 space-y-6">
-          <!-- Tracking + badges -->
-          <div>
-            <div class="flex items-center gap-2 mb-2">
-              <span class="font-mono text-lg font-bold text-body">{{ doc?.trackingNumber }}</span>
+    <UTabs :items="tabItems" class="mt-2">
+      <template #details="{ item }">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-4">
+          <!-- Left panel: 3/5 -->
+          <div class="lg:col-span-3 space-y-4">
+            <div class="bg-surface rounded-xl border border-border-base p-6 space-y-6">
+              <!-- Tracking + badges -->
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="font-mono text-lg font-bold text-body">{{ doc?.trackingNumber }}</span>
+                  <UButton
+                    icon="i-lucide-copy"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    @click="copyTracking"
+                  />
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <UrgencyBadge v-if="doc" :level="doc.urgency" />
+                  <DocumentStatusBadge v-if="doc" :status="doc.status" />
+                </div>
+              </div>
+
+              <USeparator />
+
+              <!-- Subject -->
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-icon-disabled mb-1">
+                  Subject
+                </p>
+                <p class="text-sm font-medium text-body">
+                  {{ doc?.subject }}
+                </p>
+              </div>
+
+              <!-- Sender info -->
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-icon-disabled mb-3">
+                  Sender Information
+                </p>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-xs text-muted">
+                      Name
+                    </p>
+                    <p class="text-sm font-medium text-body">
+                      {{ doc?.senderName }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted">
+                      Organization
+                    </p>
+                    <p class="text-sm font-medium text-body">
+                      {{ doc?.senderOrg }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted">
+                      Delivery Mode
+                    </p>
+                    <p class="text-sm font-medium text-body">
+                      {{ deliveryModeLabel[doc?.deliveryMode ?? ''] ?? doc?.deliveryMode }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted">
+                      Date Received
+                    </p>
+                    <p class="text-sm font-medium text-body">
+                      {{ doc ? timeAgo(doc.dateReceived) : '' }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Routing -->
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-icon-disabled mb-3">
+                  Routing
+                </p>
+                <div class="mb-2">
+                  <p class="text-xs text-muted">
+                    Assigned To
+                  </p>
+                  <p class="text-sm font-medium text-body">
+                    {{ doc?.department }} Department
+                  </p>
+                </div>
+                <div v-if="doc && doc.routingChain.length > 1" class="flex items-center gap-1.5 flex-wrap">
+                  <template
+                    v-for="(stop, i) in doc.routingChain"
+                    :key="stop"
+                  >
+                    <UBadge color="neutral" variant="soft" size="xs">
+                      {{ stop }}
+                    </UBadge>
+                    <UIcon
+                      v-if="i < doc.routingChain.length - 1"
+                      name="i-lucide-arrow-right"
+                      class="h-3 w-3 text-icon-disabled"
+                    />
+                  </template>
+                </div>
+              </div>
+
+              <!-- Attachments -->
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-icon-disabled mb-3">
+                  Attachments
+                </p>
+                <div
+                  v-for="file in doc?.attachments"
+                  :key="file"
+                  class="flex items-center gap-2 rounded-lg border border-border-base bg-subtle px-3 py-2"
+                >
+                  <UIcon name="i-lucide-file-text" class="h-5 w-5 text-rose-500 flex-shrink-0" />
+                  <span class="text-sm text-body flex-1 truncate">{{ file }}</span>
+                  <UButton icon="i-lucide-download" color="neutral" variant="ghost" size="xs" />
+                </div>
+              </div>
+
+              <!-- Action buttons -->
+              <div class="flex flex-wrap gap-2 pt-2">
+                <UButton
+                  v-if="currentUser.role === 'RECEPTION'"
+                  color="primary"
+                  variant="solid"
+                  leading-icon="i-lucide-hand"
+                  @click="showHandoffModal = true"
+                >
+                  Mark as Handed Over
+                </UButton>
+                <UButton
+                  v-if="currentUser.role === 'USER'"
+                  color="primary"
+                  variant="solid"
+                  leading-icon="i-lucide-check-circle"
+                  @click="showAckModal = true"
+                >
+                  Acknowledge Receipt
+                </UButton>
+                <UButton
+                  color="neutral"
+                  variant="outline"
+                  leading-icon="i-lucide-printer"
+                >
+                  Print Tracking Slip
+                </UButton>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right panel: 2/5 -->
+          <div class="lg:col-span-2">
+            <div class="bg-surface rounded-xl border border-border-base p-6 sticky top-6">
+              <h2 class="text-sm font-semibold text-body mb-6">
+                Event Timeline
+              </h2>
+              <EventTimeline :events="timelineEvents" />
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template #notes="{ item }">
+        <div class="mt-4 space-y-6">
+          <!-- Action bar -->
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-semibold text-body">Minute Sheet — Green Notes</p>
+              <p class="text-xs text-muted">Hash-chained and tamper-evident</p>
+            </div>
+            <div class="flex gap-2">
               <UButton
-                icon="i-lucide-copy"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                @click="copyTracking"
-              />
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <UrgencyBadge v-if="doc" :level="doc.urgency" />
-              <DocumentStatusBadge v-if="doc" :status="doc.status" />
-            </div>
-          </div>
-
-          <USeparator />
-
-          <!-- Subject -->
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-icon-disabled mb-1">
-              Subject
-            </p>
-            <p class="text-sm font-medium text-body">
-              {{ doc?.subject }}
-            </p>
-          </div>
-
-          <!-- Sender info -->
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-icon-disabled mb-3">
-              Sender Information
-            </p>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <p class="text-xs text-muted">
-                  Name
-                </p>
-                <p class="text-sm font-medium text-body">
-                  {{ doc?.senderName }}
-                </p>
-              </div>
-              <div>
-                <p class="text-xs text-muted">
-                  Organization
-                </p>
-                <p class="text-sm font-medium text-body">
-                  {{ doc?.senderOrg }}
-                </p>
-              </div>
-              <div>
-                <p class="text-xs text-muted">
-                  Delivery Mode
-                </p>
-                <p class="text-sm font-medium text-body">
-                  {{ deliveryModeLabel[doc?.deliveryMode ?? ''] ?? doc?.deliveryMode }}
-                </p>
-              </div>
-              <div>
-                <p class="text-xs text-muted">
-                  Date Received
-                </p>
-                <p class="text-sm font-medium text-body">
-                  {{ doc ? timeAgo(doc.dateReceived) : '' }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Routing -->
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-icon-disabled mb-3">
-              Routing
-            </p>
-            <div class="mb-2">
-              <p class="text-xs text-muted">
-                Assigned To
-              </p>
-              <p class="text-sm font-medium text-body">
-                {{ doc?.department }} Department
-              </p>
-            </div>
-            <div v-if="doc && doc.routingChain.length > 1" class="flex items-center gap-1.5 flex-wrap">
-              <template
-                v-for="(stop, i) in doc.routingChain"
-                :key="stop"
+                v-if="canApproveSheet"
+                color="success"
+                variant="outline"
+                leading-icon="i-lucide-check-circle"
+                @click="showApproveModal = true"
               >
-                <UBadge color="neutral" variant="soft" size="xs">
-                  {{ stop }}
-                </UBadge>
-                <UIcon
-                  v-if="i < doc.routingChain.length - 1"
-                  name="i-lucide-arrow-right"
-                  class="h-3 w-3 text-icon-disabled"
-                />
-              </template>
+                Approve Sheet
+              </UButton>
+              <UButton
+                color="primary"
+                variant="solid"
+                leading-icon="i-lucide-plus"
+                @click="handleOpenAddNote"
+              >
+                Add Note
+              </UButton>
             </div>
           </div>
 
-          <!-- Attachments -->
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-icon-disabled mb-3">
-              Attachments
-            </p>
-            <div
-              v-for="file in doc?.attachments"
-              :key="file"
-              class="flex items-center gap-2 rounded-lg border border-border-base bg-subtle px-3 py-2"
-            >
-              <UIcon name="i-lucide-file-text" class="h-5 w-5 text-rose-500 flex-shrink-0" />
-              <span class="text-sm text-body flex-1 truncate">{{ file }}</span>
-              <UButton icon="i-lucide-download" color="neutral" variant="ghost" size="xs" />
+          <!-- Timeline -->
+          <div class="space-y-0">
+            <template v-for="(note, idx) in greenNotes" :key="note.id">
+              <div class="flex gap-4">
+                <!-- Left: sequence circle + connector -->
+                <div class="flex flex-col items-center">
+                  <div class="flex h-8 w-8 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold flex-shrink-0">
+                    {{ note.sequence }}
+                  </div>
+                  <div v-if="idx < greenNotes.length - 1" class="w-px flex-1 bg-border-base my-1" />
+                </div>
+                <!-- Right: note card -->
+                <div class="pb-6 flex-1">
+                  <div class="bg-surface rounded-xl border border-border-base p-4 space-y-3">
+                    <div class="flex items-start justify-between gap-2">
+                      <div>
+                        <p class="text-sm font-semibold text-body">{{ note.authorName }}</p>
+                        <p class="text-xs text-muted">{{ note.authorRole }} · {{ timeAgo(note.timestamp) }}</p>
+                      </div>
+                      <UBadge v-if="note.chainIntact" color="success" variant="soft" size="xs" leading-icon="i-lucide-link">
+                        Chain intact
+                      </UBadge>
+                      <UBadge v-else color="error" variant="soft" size="xs" leading-icon="i-lucide-link-2-off">
+                        Chain broken
+                      </UBadge>
+                    </div>
+                    <p class="text-sm text-body leading-relaxed">{{ note.content }}</p>
+                    <div class="flex items-center gap-2 pt-1">
+                      <UIcon name="i-lucide-fingerprint" class="h-3.5 w-3.5 text-muted flex-shrink-0" />
+                      <span class="text-xs font-mono text-muted">{{ note.hash.slice(0, 16) }}...</span>
+                      <template v-if="note.previousHash">
+                        <UIcon name="i-lucide-arrow-left" class="h-3 w-3 text-muted" />
+                        <span class="text-xs font-mono text-muted">{{ note.previousHash.slice(0, 16) }}...</span>
+                      </template>
+                      <span v-else class="text-xs text-muted italic">genesis note</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Chain link between notes -->
+              <div v-if="idx < greenNotes.length - 1" class="flex gap-4 -mt-5 mb-1">
+                <div class="w-8 flex justify-center">
+                  <UIcon
+                    :name="greenNotes[idx + 1]?.chainIntact ? 'i-lucide-link' : 'i-lucide-link-2-off'"
+                    :class="greenNotes[idx + 1]?.chainIntact ? 'text-accent' : 'text-error'"
+                    class="h-4 w-4"
+                  />
+                </div>
+              </div>
+            </template>
+
+            <!-- Empty state -->
+            <div v-if="greenNotes.length === 0" class="flex flex-col items-center gap-3 py-12 text-center">
+              <UIcon name="i-lucide-notebook" class="h-8 w-8 text-muted" />
+              <p class="text-sm text-muted">No notes yet. Add the first note to start the minute sheet.</p>
             </div>
           </div>
-
-          <!-- Action buttons -->
-          <div class="flex flex-wrap gap-2 pt-2">
-            <UButton
-              v-if="currentUser.role === 'RECEPTION'"
-              color="primary"
-              variant="solid"
-              leading-icon="i-lucide-hand"
-              @click="showHandoffModal = true"
-            >
-              Mark as Handed Over
-            </UButton>
-            <UButton
-              v-if="currentUser.role === 'USER'"
-              color="primary"
-              variant="solid"
-              leading-icon="i-lucide-check-circle"
-              @click="showAckModal = true"
-            >
-              Acknowledge Receipt
-            </UButton>
-            <UButton
-              color="neutral"
-              variant="outline"
-              leading-icon="i-lucide-printer"
-            >
-              Print Tracking Slip
-            </UButton>
-          </div>
         </div>
-      </div>
-
-      <!-- Right panel: 2/5 -->
-      <div class="lg:col-span-2">
-        <div class="bg-surface rounded-xl border border-border-base p-6 sticky top-6">
-          <h2 class="text-sm font-semibold text-body mb-6">
-            Event Timeline
-          </h2>
-          <EventTimeline :events="timelineEvents" />
-        </div>
-      </div>
-    </div>
+      </template>
+    </UTabs>
   </div>
 
   <!-- Handoff confirmation modal -->
@@ -410,6 +603,75 @@ const deliveryModeLabel: Record<string, string> = {
           >
             Cancel
           </UButton>
+        </div>
+      </div>
+    </template>
+  </UModal>
+
+  <!-- Add Note modal -->
+  <UModal v-model:open="showAddNoteModal">
+    <template #content>
+      <div class="p-6 space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10">
+            <UIcon name="i-lucide-notebook-pen" class="h-5 w-5 text-accent" />
+          </div>
+          <div>
+            <h3 class="text-base font-semibold text-body">Add Green Note</h3>
+            <p class="text-xs text-muted">Appended immutably to the minute sheet</p>
+          </div>
+        </div>
+        <UFormField label="Note Content" name="noteContent">
+          <UTextarea
+            v-model="newNoteContent"
+            :rows="5"
+            placeholder="Enter your note. This will be hash-chained to the previous entry and cannot be edited after submission."
+            class="w-full"
+          />
+        </UFormField>
+        <p class="text-xs text-muted">{{ newNoteContent.length }} characters</p>
+        <div class="flex gap-2 pt-2">
+          <UButton
+            color="primary"
+            variant="solid"
+            :loading="addNoteLoading"
+            :disabled="!newNoteContent.trim()"
+            leading-icon="i-lucide-check"
+            @click="handleSubmitNote"
+          >
+            Submit Note
+          </UButton>
+          <UButton color="neutral" variant="outline" @click="showAddNoteModal = false">Cancel</UButton>
+        </div>
+      </div>
+    </template>
+  </UModal>
+
+  <!-- Approve Sheet modal -->
+  <UModal v-model:open="showApproveModal">
+    <template #content>
+      <div class="p-6 space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-success/10">
+            <UIcon name="i-lucide-check-circle" class="h-5 w-5 text-success" />
+          </div>
+          <div>
+            <h3 class="text-base font-semibold text-body">Approve Minute Sheet</h3>
+            <p class="text-xs text-muted">{{ doc?.trackingNumber }}</p>
+          </div>
+        </div>
+        <p class="text-sm text-muted">Approving the minute sheet locks it for further note additions. This action cannot be undone.</p>
+        <div class="flex gap-2 pt-2">
+          <UButton
+            color="success"
+            variant="solid"
+            :loading="approveLoading"
+            leading-icon="i-lucide-check"
+            @click="handleApproveSheet"
+          >
+            Confirm Approval
+          </UButton>
+          <UButton color="neutral" variant="outline" @click="showApproveModal = false">Cancel</UButton>
         </div>
       </div>
     </template>

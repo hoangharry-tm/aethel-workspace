@@ -8,7 +8,15 @@ const { currentUser } = useMockData()
 const { isOpen: isDrawerOpen, close: closeDrawer } = useSidebarDrawer()
 const { config } = useAppRuntimeConfig()
 // Route guards and nav visibility use the real role from JWT, not the prototype mock.
-const { user: authUser } = useAuth()
+const { user: authUser, logout } = useAuth()
+
+async function handleLogout() {
+  try {
+    await logout()
+  } finally {
+    window.location.replace('/auth/login')
+  }
+}
 
 const isCollapsed = ref(false)
 const route = useRoute()
@@ -193,7 +201,7 @@ function handleNav() {
           color="neutral"
           variant="ghost"
           size="xs"
-          :to="'/auth/login'"
+          @click="handleLogout"
         />
       </div>
     </div>

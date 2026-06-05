@@ -22,10 +22,12 @@
     <!-- Footer -->
     <p class="mt-6 text-xs text-icon-disabled">
       &copy; {{ new Date().getFullYear() }} Aethel Workspace by
-      <NuxtLink
-        to="https://www.linkedin.com/in/minh-hoang-ton"
+      <a
+        href="https://www.linkedin.com/in/minh-hoang-ton"
+        target="_blank"
+        rel="noopener noreferrer"
         class="underline decoration-dotted"
-        >Minh Hoang Ton</NuxtLink
+        >Minh Hoang Ton</a
       >. All rights reserved.
     </p>
   </div>

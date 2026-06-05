@@ -280,7 +280,13 @@ func (s *Server) jwtMiddleware(next http.Handler) http.Handler {
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		// Wildcard origin is incompatible with credentials:true — browsers reject it and
+		// refuse to store Set-Cookie headers, breaking httpOnly cookie auth. Use explicit origin.
+		origin := os.Getenv("AETHEL_CORS_ORIGIN")
+		if origin == "" {
+			origin = "http://localhost:3000"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Request-ID, X-CSRF-Token")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")

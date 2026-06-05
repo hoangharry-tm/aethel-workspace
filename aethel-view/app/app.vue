@@ -18,6 +18,6 @@ useHead({
 <template>
   <NuxtRouteAnnouncer />
   <NuxtLayout>
-    <NuxtPage />
+    <NuxtPage :key="$route.path" />
   </NuxtLayout>
 </template>

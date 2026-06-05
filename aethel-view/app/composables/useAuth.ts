@@ -28,7 +28,11 @@ export function useAuth() {
       // Do NOT verify the signature client-side — the server already verified it.
       const parts = accessToken.value.split('.')
       if (parts.length < 3) return null
-      const payload = JSON.parse(atob(parts[1] ?? ''))
+      // JWT uses base64url (RFC 7519): '-' → '+', '_' → '/', no padding.
+      // atob() requires standard base64 with '+', '/', and '=' padding.
+      const b64 = (parts[1] ?? '').replace(/-/g, '+').replace(/_/g, '/')
+      const padded = b64 + '=='.slice(0, (4 - b64.length % 4) % 4)
+      const payload = JSON.parse(atob(padded))
       if (!payload.sub || !payload.role || !payload.exp) return null
       if (Date.now() / 1000 > payload.exp) return null
       return { id: payload.sub, role: payload.role }
@@ -53,6 +57,14 @@ export function useAuth() {
       {
         method: 'POST',
         body: credentials,
+        // credentials: 'include' is required for cross-origin requests so the browser
+        // stores the Set-Cookie headers (refresh_token, csrf_token) from the response.
+        credentials: 'include',
+        // If a csrf_token cookie survives from a prior session the CSRF middleware will
+        // reject the request (cookie present, header absent → 403). Send the existing
+        // value so the double-submit check passes. Empty string is safe: if there is no
+        // cookie the middleware sees err != nil and passes through regardless.
+        headers: { 'X-CSRF-Token': getCSRFToken() },
       },
     )
     accessToken.value = data.access_token
@@ -62,10 +74,18 @@ export function useAuth() {
     try {
       await $fetch(`${apiBaseUrl}/api/v1/auth/logout`, {
         method: 'POST',
-        headers: { 'X-CSRF-Token': getCSRFToken() },
+        // The logout endpoint requires authentication to identify which DB session to revoke.
+        headers: {
+          'X-CSRF-Token': getCSRFToken(),
+          ...(accessToken.value ? { Authorization: `Bearer ${accessToken.value}` } : {}),
+        },
+        credentials: 'include',
       })
+    } catch {
+      // Server-side session invalidation failed — client state is still cleared below.
+      // The refresh cookie may remain valid; the user should clear browser cookies if
+      // initAuth() silently re-authenticates them on the next page load.
     } finally {
-      // Always clear client state, even if the server call fails.
       accessToken.value = null
     }
   }
@@ -77,7 +97,8 @@ export function useAuth() {
       const data = await $fetch<{ access_token: string }>(`${apiBaseUrl}/api/v1/auth/refresh`, {
         method: 'POST',
         headers: { 'X-CSRF-Token': getCSRFToken() },
-        // The browser sends the refresh_token httpOnly cookie automatically.
+        // credentials: 'include' sends the httpOnly refresh_token cookie cross-origin.
+        credentials: 'include',
       })
       accessToken.value = data.access_token
       return true

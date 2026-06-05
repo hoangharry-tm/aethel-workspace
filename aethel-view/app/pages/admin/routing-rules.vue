@@ -32,7 +32,6 @@ const documentTypeOptions = [
 ]
 
 const urgencyOptions = [
-  { label: 'Any', value: '' },
   { label: 'Immediate', value: 'IMMEDIATE' },
   { label: 'Priority', value: 'PRIORITY' },
   { label: 'Routine', value: 'ROUTINE' },
@@ -281,6 +280,7 @@ function removeStop(i: number) {
           <USelect
             v-model="modalForm.urgency"
             :items="urgencyOptions"
+            placeholder="Any urgency"
             class="w-full"
           />
         </UFormField>
