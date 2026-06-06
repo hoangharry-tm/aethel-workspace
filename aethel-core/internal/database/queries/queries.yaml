@@ -614,3 +614,53 @@ queries:
         ORDER BY id ASC
       timeout_ms: 30000
       required_permission: "admin.audit"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # ESCALATION RULES
+  # ══════════════════════════════════════════════════════════════════════════
+  escalation_rules:
+    list:
+      statement: |
+        SELECT id, organization_id, name, trigger_hours,
+               escalate_to_user_id, escalate_to_role, is_active,
+               created_at, updated_at
+        FROM escalation_rules
+        WHERE organization_id = $1
+        ORDER BY created_at ASC
+      timeout_ms: 3000
+      required_permission: "admin.access"
+
+    fetch_by_id:
+      statement: |
+        SELECT id, organization_id, name, trigger_hours,
+               escalate_to_user_id, escalate_to_role, is_active,
+               created_at, updated_at
+        FROM escalation_rules
+        WHERE id = $1 AND organization_id = $2
+      timeout_ms: 2000
+      required_permission: "admin.access"
+
+    create:
+      statement: |
+        INSERT INTO escalation_rules
+          (id, organization_id, name, trigger_hours,
+           escalate_to_user_id, escalate_to_role, is_active,
+           created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        RETURNING id, organization_id, name, trigger_hours,
+                  escalate_to_user_id, escalate_to_role, is_active,
+                  created_at, updated_at
+      timeout_ms: 3000
+      required_permission: "admin.access"
+
+    update:
+      statement: |
+        UPDATE escalation_rules
+        SET name = $2, trigger_hours = $3, escalate_to_user_id = $4,
+            escalate_to_role = $5, is_active = $6, updated_at = NOW()
+        WHERE id = $1 AND organization_id = $7
+        RETURNING id, organization_id, name, trigger_hours,
+                  escalate_to_user_id, escalate_to_role, is_active,
+                  created_at, updated_at
+      timeout_ms: 3000
+      required_permission: "admin.access"

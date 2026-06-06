@@ -5,12 +5,14 @@ import (
 	"aethel-core/internal/api/docs"
 	"aethel-core/internal/api/handlers"
 	"aethel-core/internal/app"
+	"aethel-core/internal/audit"
 	"aethel-core/internal/blueprint"
 	"aethel-core/internal/config"
 	"aethel-core/internal/database"
 	"aethel-core/internal/database/repos"
 	"aethel-core/internal/domain"
 	"aethel-core/internal/service"
+	"aethel-core/internal/worker"
 	"bufio"
 	"context"
 	"errors"
@@ -172,20 +174,25 @@ func runServe(cmd *cobra.Command, args []string) error {
 		auditRepo   domain.AuditRepository         = repos.NewAuditRepo(db, queries)
 	)
 
+	// Governance pillar — single audit writer for all services.
+	auditWriter := audit.NewDBWriter(auditRepo)
+
 	// Sprint 3 — workflow repositories: real DB implementations.
 	minuteSheetRepo := repos.NewMinuteSheetRepo(db, queries)
 	greenNoteRepo := repos.NewGreenNoteRepo(db, queries)
 
-	// Sprint 3–4 placeholders.
+	// Sprint 4 — governance repositories.
 	var (
-		docTypeRepo domain.DocumentTypeRepository   = &noopDocTypeRepo{}
-		escRepo     domain.EscalationRuleRepository = &noopEscRepo{}
+		docTypeRepo     domain.DocumentTypeRepository   = &noopDocTypeRepo{}
+		escRuleRepo     domain.EscalationRuleRepository = repos.NewEscalationRuleRepo(db, queries)
 	)
 
 	// 8. Wire services.
-	authSvc := service.NewAuthService(userRepo, sessionRepo, pwResetRepo, auditRepo)
-	dispatchSvc := service.NewDispatchService(dispatchRepo, eventRepo, routingRepo, minuteSheetRepo, auditRepo, db)
-	workflowSvc := service.NewWorkflowService(minuteSheetRepo, greenNoteRepo, auditRepo)
+	authSvc := service.NewAuthService(userRepo, sessionRepo, pwResetRepo, auditWriter)
+	dispatchSvc := service.NewDispatchService(dispatchRepo, eventRepo, routingRepo, minuteSheetRepo, auditWriter, db)
+	workflowSvc := service.NewWorkflowService(minuteSheetRepo, greenNoteRepo, auditWriter)
+	governanceSvc := service.NewGovernanceService(auditRepo)
+	escalationSvc := service.NewEscalationService(dispatchRepo, escRuleRepo, eventRepo, auditWriter)
 
 	// 9. Wire handlers.
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -196,7 +203,8 @@ func runServe(cmd *cobra.Command, args []string) error {
 		Users:        userRepo,
 		DocTypes:     docTypeRepo,
 		RoutingRules: routingRepo,
-		EscRules:     escRepo,
+		EscRules:     escRuleRepo,
+		Audit:        auditWriter,
 	}
 
 	// 10. Validate OpenAPI spec at startup. Panics if the spec is malformed.
@@ -204,7 +212,14 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	// 11. Start HTTP server.
 	addr := envAddr()
-	srv := api.NewServer(db, queries, configCache, authHandler, dispatchHandler, workflowHandler, auditRepo, adminDeps)
+	srv := api.NewServer(db, queries, configCache, authHandler, dispatchHandler, workflowHandler, governanceSvc, adminDeps)
+
+	// 12. Start escalation worker after server is ready.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	escalationWorker := worker.NewEscalationWorker(escalationSvc, 15*time.Minute, []uuid.UUID{app.OrgID})
+	go escalationWorker.Run(ctx)
+
 	slog.Info("starting server", "addr", addr)
 	return srv.ListenAndServe(addr)
 }
@@ -238,12 +253,12 @@ func runBootstrapAdmin(_ *cobra.Command, _ []string) error {
 
 	// Build services.
 	// Bootstrap uses a write-only audit noop — no query registry is loaded in this path.
-	auditRepo := &bootstrapAuditRepo{}
+	bootstrapAudit := audit.NewDBWriter(&bootstrapAuditRepo{})
 	authSvc := service.NewAuthService(
 		userRepo,
 		sessionRepo,
 		pwResetRepo,
-		auditRepo,
+		bootstrapAudit,
 	)
 
 	bootstrapSvc := service.NewBootstrapService(

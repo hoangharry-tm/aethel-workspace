@@ -27,6 +27,7 @@ const (
 	AuditAdminUserDeactivated       AuditEventType = "ADMIN_USER_DEACTIVATED"
 	AuditAdminSettingsChanged       AuditEventType = "ADMIN_SETTINGS_CHANGED"
 	AuditRoutingRuleModified        AuditEventType = "ROUTING_RULE_MODIFIED"
+	AuditEscalationFired            AuditEventType = "ESCALATION_FIRED"
 )
 
 type AuditEntry struct {
@@ -58,17 +59,15 @@ type BrokenLink struct {
 }
 
 type EscalationRule struct {
-	ID                  uuid.UUID  `json:"id"`
-	OrganizationID      uuid.UUID  `json:"organizationId"`
-	Name                string     `json:"name"`
-	DocumentTypeID      *uuid.UUID `json:"documentTypeId,omitempty"`
-	PriorityLevel       *string    `json:"priorityLevel,omitempty"`
-	EscalateAfterHours  int        `json:"escalateAfterHours"`
-	NotifyUserID        *uuid.UUID `json:"notifyUserId,omitempty"`
-	NotifyDepartmentID  *uuid.UUID `json:"notifyDepartmentId,omitempty"`
-	IsActive            bool       `json:"isActive"`
-	CreatedAt           time.Time  `json:"createdAt"`
-	UpdatedAt           time.Time  `json:"updatedAt"`
+	ID                 uuid.UUID  `json:"id"`
+	OrganizationID     uuid.UUID  `json:"organizationId"`
+	Name               string     `json:"name"`
+	TriggerHours       int        `json:"triggerHours"`
+	EscalateToUserID   *uuid.UUID `json:"escalateToUserId,omitempty"`
+	EscalateToRole     *string    `json:"escalateToRole,omitempty"`
+	IsActive           bool       `json:"isActive"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	UpdatedAt          time.Time  `json:"updatedAt"`
 }
 
 type AuditRepository interface {

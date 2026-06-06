@@ -76,19 +76,23 @@ func seedOrg(t *testing.T, db *sql.DB) uuid.UUID {
 	return app.OrgID
 }
 
-// seedDocType inserts a document type for use in dispatch tests.
+// seedDocType inserts a document type and returns the ID that is actually in the DB.
+// Uses INSERT ... ON CONFLICT DO UPDATE ... RETURNING to handle pre-existing rows.
 func seedDocType(t *testing.T, db *sql.DB, orgID uuid.UUID) uuid.UUID {
 	t.Helper()
 	dtID := uuid.New()
-	_, err := db.ExecContext(context.Background(),
-		`INSERT INTO document_types (id, organization_id, name, code, is_active)
-		 VALUES ($1, $2, 'Test Doc', 'TEST', true) ON CONFLICT DO NOTHING`,
+	var got uuid.UUID
+	err := db.QueryRowContext(context.Background(),
+		`INSERT INTO document_types (id, organization_id, name, is_active)
+		 VALUES ($1, $2, 'Test Doc', true)
+		 ON CONFLICT (organization_id, name) DO UPDATE SET is_active = EXCLUDED.is_active
+		 RETURNING id`,
 		dtID, orgID,
-	)
+	).Scan(&got)
 	if err != nil {
 		t.Fatalf("seed doc type: %v", err)
 	}
-	return dtID
+	return got
 }
 
 // seedUser inserts a minimal user for submitted_by_user_id.

@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"aethel-core/internal/audit"
 	"aethel-core/internal/domain"
 )
 
@@ -18,18 +19,18 @@ const firstNoteAnchor = "genesis"
 type WorkflowService struct {
 	minuteSheets domain.MinuteSheetRepository
 	greenNotes   domain.GreenNoteRepository
-	audit        domain.AuditRepository
+	audit        audit.Writer
 }
 
 func NewWorkflowService(
 	minuteSheets domain.MinuteSheetRepository,
 	greenNotes domain.GreenNoteRepository,
-	audit domain.AuditRepository,
+	auditWriter audit.Writer,
 ) *WorkflowService {
 	return &WorkflowService{
 		minuteSheets: minuteSheets,
 		greenNotes:   greenNotes,
-		audit:        audit,
+		audit:        auditWriter,
 	}
 }
 

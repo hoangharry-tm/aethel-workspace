@@ -6,16 +6,16 @@ import (
 
 	"github.com/google/uuid"
 
-	"aethel-core/internal/domain"
 	"aethel-core/internal/rbac"
+	"aethel-core/internal/service"
 )
 
 type GovernanceHandler struct {
-	audit domain.AuditRepository
+	svc *service.GovernanceService
 }
 
-func NewGovernanceHandler(audit domain.AuditRepository) *GovernanceHandler {
-	return &GovernanceHandler{audit: audit}
+func NewGovernanceHandler(svc *service.GovernanceService) *GovernanceHandler {
+	return &GovernanceHandler{svc: svc}
 }
 
 func (h *GovernanceHandler) QueryAuditLog(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +25,7 @@ func (h *GovernanceHandler) QueryAuditLog(w http.ResponseWriter, r *http.Request
 	from, to := parseTimeRange(r)
 	page := pageFromQuery(r)
 
-	entries, err := h.audit.Query(r.Context(), orgID, from, to, page)
+	entries, err := h.svc.QueryAuditLog(r.Context(), orgID, from, to, page)
 	if err != nil {
 		writeError(w, "failed to query audit log", http.StatusInternalServerError)
 		return
@@ -39,7 +39,7 @@ func (h *GovernanceHandler) VerifyChain(w http.ResponseWriter, r *http.Request) 
 
 	from, to := parseTimeRange(r)
 
-	result, err := h.audit.VerifyChain(r.Context(), orgID, from, to)
+	result, err := h.svc.VerifyChain(r.Context(), orgID, from, to)
 	if err != nil {
 		writeError(w, "failed to verify chain", http.StatusInternalServerError)
 		return

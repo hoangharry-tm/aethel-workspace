@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"aethel-core/internal/app"
+	"aethel-core/internal/audit"
 	"aethel-core/internal/domain"
 )
 
@@ -18,7 +19,7 @@ type DispatchService struct {
 	events       domain.DispatchEventRepository
 	routingRules domain.RoutingRuleRepository
 	minuteSheets domain.MinuteSheetRepository
-	audit        domain.AuditRepository
+	audit        audit.Writer
 	db           *sql.DB // for transactional Create
 }
 
@@ -27,7 +28,7 @@ func NewDispatchService(
 	events domain.DispatchEventRepository,
 	routingRules domain.RoutingRuleRepository,
 	minuteSheets domain.MinuteSheetRepository,
-	audit domain.AuditRepository,
+	auditWriter audit.Writer,
 	db *sql.DB,
 ) *DispatchService {
 	return &DispatchService{
@@ -35,7 +36,7 @@ func NewDispatchService(
 		events:       events,
 		routingRules: routingRules,
 		minuteSheets: minuteSheets,
-		audit:        audit,
+		audit:        auditWriter,
 		db:           db,
 	}
 }

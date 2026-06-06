@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"aethel-core/internal/audit"
 	"aethel-core/internal/domain"
 	"aethel-core/internal/rbac"
 	"encoding/json"
@@ -15,22 +16,16 @@ type AdminHandler struct {
 	docTypes     domain.DocumentTypeRepository
 	routingRules domain.RoutingRuleRepository
 	escRules     domain.EscalationRuleRepository
-	audit        domain.AuditRepository
+	audit        audit.Writer
 }
 
-func NewAdminHandler(
-	users domain.UserRepository,
-	docTypes domain.DocumentTypeRepository,
-	routingRules domain.RoutingRuleRepository,
-	escRules domain.EscalationRuleRepository,
-	audit domain.AuditRepository,
-) *AdminHandler {
+func NewAdminHandler(deps AdminDeps) *AdminHandler {
 	return &AdminHandler{
-		users:        users,
-		docTypes:     docTypes,
-		routingRules: routingRules,
-		escRules:     escRules,
-		audit:        audit,
+		users:        deps.Users,
+		docTypes:     deps.DocTypes,
+		routingRules: deps.RoutingRules,
+		escRules:     deps.EscRules,
+		audit:        deps.Audit,
 	}
 }
 

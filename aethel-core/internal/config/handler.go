@@ -77,7 +77,7 @@ func (h *Handler) PatchBranding(w http.ResponseWriter, r *http.Request) {
 	orgID := app.OrgID
 	_, err := h.db.ExecContext(r.Context(), `
 		INSERT INTO branding_configs (id, organization_id, primary_brand_color, neutral_palette, font_family, wordmark, logo_file_path, updated_at)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, now())
+		VALUES (gen_random_uuid(), $1, NULLIF($2,''), NULLIF($3,''), NULLIF($4,''), NULLIF($5,''), NULLIF($6,''), now())
 		ON CONFLICT (organization_id) DO UPDATE SET
 			primary_brand_color = COALESCE(NULLIF(EXCLUDED.primary_brand_color, ''), branding_configs.primary_brand_color),
 			neutral_palette     = COALESCE(NULLIF(EXCLUDED.neutral_palette, ''),     branding_configs.neutral_palette),

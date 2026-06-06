@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"aethel-core/internal/audit"
 	"aethel-core/internal/domain"
 )
 
@@ -14,20 +15,20 @@ type EscalationService struct {
 	dispatches      domain.DispatchRepository
 	escalationRules domain.EscalationRuleRepository
 	events          domain.DispatchEventRepository
-	audit           domain.AuditRepository
+	audit           audit.Writer
 }
 
 func NewEscalationService(
 	dispatches domain.DispatchRepository,
 	escalationRules domain.EscalationRuleRepository,
 	events domain.DispatchEventRepository,
-	audit domain.AuditRepository,
+	auditWriter audit.Writer,
 ) *EscalationService {
 	return &EscalationService{
 		dispatches:      dispatches,
 		escalationRules: escalationRules,
 		events:          events,
-		audit:           audit,
+		audit:           auditWriter,
 	}
 }
 
@@ -67,14 +68,8 @@ func (s *EscalationService) EvaluateForOrg(ctx context.Context, orgID uuid.UUID)
 	return nil
 }
 
-func (s *EscalationService) ruleApplies(d *domain.Dispatch, rule *domain.EscalationRule) bool {
-	if rule.DocumentTypeID != nil && d.DocumentTypeID != *rule.DocumentTypeID {
-		return false
-	}
-	if rule.PriorityLevel != nil && string(d.PriorityLevel) != *rule.PriorityLevel {
-		return false
-	}
-	return true
+func (s *EscalationService) ruleApplies(_ *domain.Dispatch, rule *domain.EscalationRule) bool {
+	return rule.IsActive
 }
 
 func (s *EscalationService) escalate(ctx context.Context, orgID uuid.UUID, d *domain.Dispatch) error {
@@ -86,6 +81,11 @@ func (s *EscalationService) escalate(ctx context.Context, orgID uuid.UUID, d *do
 		OrganizationID: orgID,
 		DispatchID:     d.ID,
 		EventType:      "ESCALATED_BY_RULE",
+	})
+	_ = s.audit.Write(ctx, &domain.AuditEntry{
+		OrganizationID:  orgID,
+		ActionEventType: domain.AuditEscalationFired,
+		TargetResourceID: &d.ID,
 	})
 	return nil
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
 
+	"aethel-core/internal/audit"
 	"aethel-core/internal/domain"
 )
 
@@ -24,7 +25,7 @@ const (
 	defaultParallelism   = 4
 	saltLength           = 16
 	keyLength            = 32
-	accessTokenDuration  = 15 * time.Minute
+	accessTokenDuration  = 30 * time.Minute
 	refreshTokenDuration = 7 * 24 * time.Hour
 	lockoutThreshold     = 5
 	lockoutDuration      = 15 * time.Minute
@@ -34,20 +35,20 @@ type AuthService struct {
 	users    domain.UserRepository
 	sessions domain.SessionRepository
 	pwReset  domain.PasswordResetRepository
-	audit    domain.AuditRepository
+	audit    audit.Writer
 }
 
 func NewAuthService(
 	users domain.UserRepository,
 	sessions domain.SessionRepository,
 	pwReset domain.PasswordResetRepository,
-	audit domain.AuditRepository,
+	auditWriter audit.Writer,
 ) *AuthService {
 	return &AuthService{
 		users:    users,
 		sessions: sessions,
 		pwReset:  pwReset,
-		audit:    audit,
+		audit:    auditWriter,
 	}
 }
 

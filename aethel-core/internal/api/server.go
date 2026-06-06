@@ -10,6 +10,7 @@ import (
 	"aethel-core/internal/database"
 	"aethel-core/internal/domain"
 	"aethel-core/internal/rbac"
+	"aethel-core/internal/service"
 	"aethel-core/internal/transport"
 	"database/sql"
 	"fmt"
@@ -48,7 +49,7 @@ func NewServer(
 	authSvc *handlers.AuthHandler,
 	dispatchSvc *handlers.DispatchHandler,
 	workflowSvc *handlers.WorkflowHandler,
-	auditRepo domain.AuditRepository,
+	governanceSvc *service.GovernanceService,
 	adminDeps handlers.AdminDeps,
 ) *Server {
 	s := &Server{
@@ -57,7 +58,7 @@ func NewServer(
 		configCache: configCache,
 		sse:         transport.NewSSEBroker(),
 	}
-	s.router = s.buildRouter(authSvc, dispatchSvc, workflowSvc, auditRepo, adminDeps)
+	s.router = s.buildRouter(authSvc, dispatchSvc, workflowSvc, governanceSvc, adminDeps)
 	return s
 }
 
@@ -81,7 +82,7 @@ func (s *Server) buildRouter(
 	authSvc *handlers.AuthHandler,
 	dispatchSvc *handlers.DispatchHandler,
 	workflowSvc *handlers.WorkflowHandler,
-	auditRepo domain.AuditRepository,
+	governanceSvc *service.GovernanceService,
 	adminDeps handlers.AdminDeps,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -169,18 +170,12 @@ func (s *Server) buildRouter(
 		})
 
 		// Governance endpoints.
-		gh := handlers.NewGovernanceHandler(auditRepo)
+		gh := handlers.NewGovernanceHandler(governanceSvc)
 		r.With(rbac.Require("admin.audit")).Get("/audit-log", gh.QueryAuditLog)
 		r.With(rbac.Require("admin.audit")).Get("/audit-log/verify", gh.VerifyChain)
 
 		// Admin endpoints.
-		ah := handlers.NewAdminHandler(
-			adminDeps.Users,
-			adminDeps.DocTypes,
-			adminDeps.RoutingRules,
-			adminDeps.EscRules,
-			auditRepo,
-		)
+		ah := handlers.NewAdminHandler(adminDeps)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(rbac.Require("admin.access"))
 			r.Get("/users", ah.ListUsers)
