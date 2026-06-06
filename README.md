@@ -59,6 +59,8 @@ It is built for institutions where accountability and chain-of-custody are opera
   </tbody>
 </table>
 
+<div align="center"><img src="docs/assets/role-matrix.svg" width="700" alt="RBAC permission matrix across USER, RECEPTION, ADMIN, and SYS_ADMIN roles"/></div>
+
 ---
 
 ## Architecture
@@ -102,13 +104,13 @@ flowchart LR
 ## Technical Highlights
 
 > [!NOTE]
-> **Runtime-configurable, not rebuild-required.** Organization branding (colors, fonts, logo), navigation structure, and feature flags are all stored in PostgreSQL and editable through the admin panel. Changes take effect on the next page load — no redeployment, no CDN invalidation, no build step. The backend serves a single `GET /api/v1/config` endpoint with a 5-minute in-memory cache, embedded into the initial SSR HTML payload so the frontend never makes a separate round-trip.
+> **Runtime-configurable, not rebuild-required.** Organization branding (colors, fonts, logo), navigation structure, and feature flags are all stored in PostgreSQL and editable through the admin panel. Changes take effect on the next page load — no redeployment, no CDN invalidation, no build step. The backend serves a single `GET /api/v1/config` endpoint with a 5-minute in-memory cache. On the initial page load, Nuxt SSR embeds the config response directly into the HTML payload — the browser starts with config already present, so zero client-side config fetches occur before first render.
 
 > [!TIP]
 > **Cryptographic document integrity without blockchain overhead.** The Green Notes chain uses SHA-256 applied to `content ‖ sequence_number ‖ author_id ‖ previous_hash`. This is the same tamper-detection pattern used in certificate transparency logs and Git's object model — deterministic, auditable by any party with access to the raw data, and requires no consensus protocol or external dependency.
 
 > [!IMPORTANT]
-> **Argon2id password hashing.** Aethel uses Argon2id (RFC 9106 winner) with configurable memory, iteration, and parallelism parameters. Defaults: 64 MiB memory · 3 iterations · 4 parallel threads. Parameters are blueprint-configurable so deployments with tighter hardware constraints can tune accordingly. Passwords are never logged, never returned by the API, and bcrypt is explicitly not used.
+> **Argon2id password hashing.** Aethel uses Argon2id (Password Hashing Competition winner, standardized as RFC 9106) with configurable memory, iteration, and parallelism parameters. Defaults: 64 MiB memory · 3 iterations · 4 parallel threads. Parameters are blueprint-configurable so deployments with tighter hardware constraints can tune accordingly. Passwords are never logged, never returned by the API, and bcrypt is explicitly not used.
 
 ---
 
@@ -125,6 +127,9 @@ make dev                      # PostgreSQL + Go backend + Nuxt frontend via Dock
 
 # 3. Apply database schema
 make migrate-up               # 42 migrations, ~2 seconds on first run
+
+# 4. Create the first admin account
+go run ./cmd/aethel bootstrap-admin   # prints a temporary password; change it at /admin/users
 ```
 
 | Service | URL | Notes |
@@ -175,7 +180,7 @@ make migrate-up               # 42 migrations, ~2 seconds on first run
     <td><strong>Auth</strong></td>
     <td>
       <img src="https://img.shields.io/badge/Argon2id-password_hashing-dc2626?style=flat-square" alt="Argon2id"/>
-      <img src="https://img.shields.io/badge/JWT_HS256-access_tokens-dc2626?style=flat-square" alt="JWT"/>
+      <img src="https://img.shields.io/badge/JWT_HS256%2FRS256-access_tokens-dc2626?style=flat-square" alt="JWT HS256/RS256"/>
       <img src="https://img.shields.io/badge/httpOnly_cookie-refresh_tokens-dc2626?style=flat-square" alt="httpOnly"/>
       <img src="https://img.shields.io/badge/CSRF_double--submit-dc2626?style=flat-square" alt="CSRF"/>
     </td>
@@ -206,7 +211,7 @@ make migrate-up               # 42 migrations, ~2 seconds on first run
 <summary><strong>📋 DAK Diarization — Dispatch Tracking</strong></summary>
 <br/>
 
-**Routing rule engine** — Rules are evaluated in priority order at dispatch creation. Each rule matches on any combination of: document type, sender organization, urgency level (`ROUTINE` / `PRIORITY` / `IMMEDIATE`). The first matching rule assigns the dispatch to the configured department. If no rule matches, the dispatch enters the unassigned inbox for manual routing.
+**Routing rule engine** — Rules are evaluated in priority order at dispatch creation. Each rule matches on any combination of: document type, sender organization, urgency level (`ROUTINE` / `PRIORITY` / `IMMEDIATE`). The first matching rule assigns the dispatch to the configured department. If no rule matches, the dispatch enters the unassigned inbox for manual routing. Rules are stored in the `routing_rules` table and editable at runtime via `/admin/routing-rules` — no restart required.
 
 **Dispatch lifecycle**
 
@@ -216,9 +221,11 @@ PENDING_ASSIGNMENT → UNDER_REVIEW → IN_TRANSIT → DELIVERED
                                                ↘ REJECTED
 ```
 
+<div align="center"><img src="docs/assets/dispatch-lifecycle.svg" width="100%" alt="Dispatch status state machine diagram"/></div>
+
 **Timeline events** — A unified `dispatch_events` table aggregates all routing decisions, handoffs, escalations, and status changes. The document detail page renders this as a live timeline without multi-table UNIONs.
 
-**Escalation worker** — A background goroutine evaluates all dispatches older than the configured threshold. When a dispatch exceeds its deadline, its status transitions to `ESCALATED`, a notification is sent to the assigned department head, and an audit event is written. The evaluation interval is blueprint-configurable.
+**Escalation worker** — A background goroutine evaluates all open dispatches whose last status change is older than the configured deadline threshold. When a dispatch exceeds its deadline, its status transitions to `ESCALATED`, a notification is sent to the assigned department head, and an audit event is written. The evaluation interval is blueprint-configurable.
 
 </details>
 
@@ -235,6 +242,8 @@ Each green note is inserted with:
 cryptographic_hash = SHA-256(content ‖ sequence_number ‖ author_id ‖ previous_hash)
 ```
 
+<div align="center"><img src="docs/assets/hash-chain.svg" width="100%" alt="Green Note cryptographic hash chain diagram"/></div>
+
 The database stores both the note's own hash and the `previous_hash` of its predecessor. Any attempt to alter a note's content, swap two notes, or delete a note from the middle of the chain produces a hash mismatch detectable at the next verification pass.
 
 **Approval countersigning** — Notes flagged as approvals require a role with `workflow.approve` permission. The approval is recorded with the signer's user ID and timestamp. Attempted approvals by under-privileged users are rejected with `403` and logged to the audit ledger.
@@ -248,7 +257,7 @@ The database stores both the note's own hash and the `previous_hash` of its pred
 **Schema design choices:**
 - `bigserial` primary key (not UUID) for partition-efficient sequential access
 - `organization_id` stored as plain `uuid` without FK — audit records survive organization deletion
-- `previous_checksum` chains rows: each new entry hashes `(event_type ‖ actor_id ‖ resource_id ‖ created_at ‖ previous_checksum)`
+- `previous_checksum` chains rows: each new entry hashes `SHA-256(row_id ‖ actor_user_id ‖ action_event_type ‖ target_resource_id ‖ ip_address ‖ created_at ‖ previous_checksum)`
 - Monthly `PARTITION BY RANGE(created_at)` — old partitions can be archived or moved to cold storage without touching the active partition
 
 **Verification endpoint** — `GET /api/v1/audit-log/verify?from=&to=` (requires `sys_admin` role) re-fetches every row in the range and recomputes the checksum chain from scratch. Response:
@@ -423,7 +432,7 @@ Aethel takes security seriously. The full threat model and implemented controls 
 
 To report a vulnerability, see [`SECURITY.md`](./SECURITY.md). Please use GitHub's private vulnerability reporting — do not open a public issue for security bugs.
 
-**Key controls at a glance:** Argon2id · JWT with short-lived access tokens · httpOnly refresh cookie with rotation · CSRF double-submit · account lockout at 5 failed attempts · Content-Security-Policy · per-IP + per-user rate limiting · append-only audit ledger · `db-harden.sql` revokes default public schema permissions.
+**Key controls at a glance:** Argon2id · JWT access tokens (15 min TTL) · httpOnly refresh cookie (7-day TTL) with rotation · CSRF double-submit · account lockout at 5 failed attempts · Content-Security-Policy · per-IP pre-auth + per-user post-auth + per-endpoint rate limiting · append-only audit ledger · `db-harden.sql` revokes default public schema permissions.
 
 ---
 
