@@ -1,0 +1,38 @@
+<svg width="1280" height="220" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 220">
+  <!-- Background -->
+  <rect width="1280" height="220" fill="#0a0a0a"/>
+  <!-- Outer border frame -->
+  <rect x="36" y="18" width="1208" height="184" fill="none" stroke="#1c1c1c" stroke-width="1"/>
+  <!-- Corner accent marks — top-left -->
+  <line x1="36" y1="18" x2="90" y2="18" stroke="#383838" stroke-width="1.5"/>
+  <line x1="36" y1="18" x2="36" y2="72" stroke="#383838" stroke-width="1.5"/>
+  <!-- Corner accent marks — top-right -->
+  <line x1="1244" y1="18" x2="1190" y2="18" stroke="#383838" stroke-width="1.5"/>
+  <line x1="1244" y1="18" x2="1244" y2="72" stroke="#383838" stroke-width="1.5"/>
+  <!-- Corner accent marks — bottom-left -->
+  <line x1="36" y1="202" x2="90" y2="202" stroke="#383838" stroke-width="1.5"/>
+  <line x1="36" y1="202" x2="36" y2="148" stroke="#383838" stroke-width="1.5"/>
+  <!-- Corner accent marks — bottom-right -->
+  <line x1="1244" y1="202" x2="1190" y2="202" stroke="#383838" stroke-width="1.5"/>
+  <line x1="1244" y1="202" x2="1244" y2="148" stroke="#383838" stroke-width="1.5"/>
+  <!-- Main wordmark -->
+  <text
+    x="640" y="122"
+    font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="76"
+    font-weight="200"
+    fill="#f0f0f0"
+    text-anchor="middle"
+    letter-spacing="30">AETHEL</text>
+  <!-- Thin rule between title and subtitle -->
+  <line x1="574" y1="142" x2="706" y2="142" stroke="#282828" stroke-width="1"/>
+  <!-- Subtitle -->
+  <text
+    x="640" y="168"
+    font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="12"
+    font-weight="400"
+    fill="#484848"
+    text-anchor="middle"
+    letter-spacing="10">WORKSPACE</text>
+</svg>
