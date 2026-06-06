@@ -3,6 +3,7 @@ import { useMockData } from '~/composables/useMockData'
 import { useNotificationDrawer } from '~/composables/useNotificationDrawer'
 import { useSidebarDrawer } from '~/composables/useSidebarDrawer'
 
+const { t } = useI18n()
 const { currentUser, setRole, notifications } = useMockData()
 const { open: openNotifications } = useNotificationDrawer()
 const { open: openSidebar } = useSidebarDrawer()
@@ -16,23 +17,23 @@ const searchQuery = ref('')
 const route = useRoute()
 const pageTitle = computed(() => {
   const map: Record<string, string> = {
-    '/dashboard': 'Dashboard',
-    '/dispatch/inbound': 'Inbound Documents',
+    '/dashboard': t('nav.dashboard'),
+    '/dispatch/inbound': t('dispatch.inboxTitle'),
     '/dispatch/inbound/new': 'Log Incoming Document',
-    '/dispatch/outbound': 'Outbound Documents',
-    '/my-documents': 'My Documents',
-    '/outgoing/new': 'Submit Outgoing Request',
-    '/search': 'Search',
-    '/admin/users': 'Users',
-    '/admin/document-types': 'Document Types',
-    '/admin/routing-rules': 'Routing Rules',
-    '/admin/escalation': 'Escalation',
-    '/admin/audit-log': 'Audit Log',
-    '/admin/reports': 'Reports',
-    '/admin/settings': 'Settings',
-    '/admin/branding': 'Branding',
+    '/dispatch/outbound': t('dispatch.outboxTitle'),
+    '/my-documents': t('document.myDocuments'),
+    '/outgoing/new': t('dispatch.newOutbound'),
+    '/search': t('search.title'),
+    '/admin/users': t('admin.users'),
+    '/admin/document-types': t('admin.documentTypes'),
+    '/admin/routing-rules': t('admin.routingRules'),
+    '/admin/escalation': t('admin.escalation'),
+    '/admin/audit-log': t('admin.auditLog'),
+    '/admin/reports': t('admin.reports'),
+    '/admin/settings': t('admin.settings'),
+    '/admin/branding': t('admin.branding'),
   }
-  if (route.path.startsWith('/documents/')) return 'Document Detail'
+  if (route.path.startsWith('/documents/')) return t('document.details')
   return map[route.path] ?? 'Aethel Workspace'
 })
 
@@ -60,31 +61,31 @@ const profileItems = computed(() => [
   ],
   [
     {
-      label: 'Profile',
+      label: t('nav.profile'),
       icon: 'i-lucide-user',
       to: '#',
     },
   ],
   [
     {
-      label: 'Switch Role: ADMIN',
+      label: `${t('nav.switchRole')}: ADMIN`,
       icon: 'i-lucide-shield',
       onSelect: () => setRole('ADMIN'),
     },
     {
-      label: 'Switch Role: RECEPTION',
+      label: `${t('nav.switchRole')}: RECEPTION`,
       icon: 'i-lucide-inbox',
       onSelect: () => setRole('RECEPTION'),
     },
     {
-      label: 'Switch Role: USER',
+      label: `${t('nav.switchRole')}: USER`,
       icon: 'i-lucide-user-circle',
       onSelect: () => setRole('USER'),
     },
   ],
   [
     {
-      label: 'Sign Out',
+      label: t('auth.logout'),
       icon: 'i-lucide-log-out',
       onSelect: handleLogout,
     },
@@ -114,7 +115,7 @@ const profileItems = computed(() => [
       <UInput
         v-model="searchQuery"
         icon="i-lucide-search"
-        placeholder="Search documents..."
+        :placeholder="$t('common.search') + ' documents...'"
         size="sm"
         class="w-full"
         @keyup.enter="handleSearch"
@@ -130,6 +131,7 @@ const profileItems = computed(() => [
       variant="ghost"
       size="sm"
       class="relative"
+      :aria-label="$t('nav.notifications')"
       @click="openNotifications"
     >
       <template v-if="unreadCount > 0">
@@ -173,7 +175,7 @@ const profileItems = computed(() => [
               {{ currentUser.role }}
             </UBadge>
             <!-- Role switcher is prototype/demo only — route guards use JWT role from useAuth() -->
-            <UBadge color="warning" variant="soft" size="xs" class="ml-2">Demo only</UBadge>
+            <UBadge color="warning" variant="soft" size="xs" class="ml-2">{{ $t('auth.demoOnly') }}</UBadge>
           </div>
         </div>
       </template>

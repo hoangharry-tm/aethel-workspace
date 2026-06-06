@@ -54,7 +54,7 @@ const eventColors: Record<string, string> = {
         <!-- Header -->
         <div class="flex items-center justify-between px-4 py-3 border-b border-border-base">
           <h2 class="text-sm font-semibold text-body">
-            Notifications
+            {{ $t('nav.notifications') }}
           </h2>
           <div class="flex items-center gap-2">
             <UButton
@@ -63,13 +63,14 @@ const eventColors: Record<string, string> = {
               size="xs"
               @click="markAllRead"
             >
-              Mark all read
+              {{ $t('nav.markAllRead') }}
             </UButton>
             <UButton
               icon="i-lucide-x"
               color="neutral"
               variant="ghost"
               size="xs"
+              :aria-label="$t('common.close')"
               @click="close"
             />
           </div>
@@ -119,10 +120,10 @@ const eventColors: Record<string, string> = {
           >
             <UIcon name="i-lucide-bell-off" class="h-10 w-10 text-icon-faint mb-3" />
             <p class="text-sm font-medium text-muted">
-              No notifications
+              {{ $t('nav.noNotifications') }}
             </p>
             <p class="text-xs text-icon-disabled mt-1">
-              You're all caught up!
+              {{ $t('nav.allCaughtUp') }}
             </p>
           </div>
         </div>

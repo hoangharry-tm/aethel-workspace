@@ -74,7 +74,7 @@ function createUser() {
     <div class="flex items-center justify-between gap-4 flex-wrap">
       <div>
         <h1 class="text-xl font-bold text-body">
-          Users
+          {{ $t('admin.users') }}
         </h1>
         <p class="text-sm text-muted mt-0.5">
           Manage workspace members and their access roles
@@ -86,7 +86,7 @@ function createUser() {
         leading-icon="i-lucide-user-plus"
         @click="showNewUserModal = true"
       >
-        New User
+        {{ $t('admin.createUser') }}
       </UButton>
     </div>
 
@@ -103,16 +103,16 @@ function createUser() {
                 Email
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Role
+                {{ $t('admin.role') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden md:table-cell">
-                Department
+                {{ $t('admin.department') }}
               </th>
               <th class="px-4 py-3 text-center text-xs font-semibold text-muted uppercase tracking-wider">
-                Status
+                {{ $t('common.status') }}
               </th>
               <th class="px-4 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wider">
-                Actions
+                {{ $t('common.actions') }}
               </th>
             </tr>
           </thead>
@@ -157,7 +157,7 @@ function createUser() {
                     class="h-2 w-2 rounded-full"
                     :class="user.status === 'active' ? 'bg-emerald-500' : 'bg-divider'"
                   />
-                  {{ user.status === 'active' ? 'Active' : 'Inactive' }}
+                  {{ user.status === 'active' ? $t('common.active') : $t('common.inactive') }}
                 </button>
               </td>
               <td class="px-4 py-3 text-right">
@@ -189,31 +189,31 @@ function createUser() {
     <template #content>
       <div class="p-6 space-y-4">
         <h3 class="text-base font-semibold text-body">
-          New User
+          {{ $t('admin.createUser') }}
         </h3>
 
-        <UFormField label="Full Name" name="name" required>
+        <UFormField :label="$t('admin.fullName')" name="name" required>
           <UInput v-model="newUserForm.name" placeholder="Full name" class="w-full" />
         </UFormField>
 
-        <UFormField label="Email" name="email" required>
+        <UFormField :label="$t('auth.email')" name="email" required>
           <UInput v-model="newUserForm.email" type="email" placeholder="email@aethel.org" class="w-full" />
         </UFormField>
 
-        <UFormField label="Department" name="department" required>
+        <UFormField :label="$t('admin.department')" name="department" required>
           <USelect v-model="newUserForm.department" :items="departmentOptions" placeholder="Select department" class="w-full" />
         </UFormField>
 
-        <UFormField label="Role" name="role">
+        <UFormField :label="$t('admin.role')" name="role">
           <USelect v-model="newUserForm.role" :items="roleOptions" class="w-full" />
         </UFormField>
 
         <div class="flex gap-2 pt-2">
           <UButton color="primary" variant="solid" @click="createUser">
-            Create User
+            {{ $t('admin.createUser') }}
           </UButton>
           <UButton color="neutral" variant="outline" @click="showNewUserModal = false">
-            Cancel
+            {{ $t('common.cancel') }}
           </UButton>
         </div>
       </div>

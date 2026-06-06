@@ -82,3 +82,33 @@ type EscalationRuleRepository interface {
 	Create(ctx context.Context, r *EscalationRule) error
 	Update(ctx context.Context, r *EscalationRule) error
 }
+
+// Notification represents a single in-app notification delivered to a user.
+type Notification struct {
+	ID                uuid.UUID  `json:"id"`
+	OrganizationID    uuid.UUID  `json:"organizationId"`
+	UserID            uuid.UUID  `json:"userId"`
+	Title             string     `json:"title"`
+	Body              string     `json:"body"`
+	Type              string     `json:"type"`
+	IsRead            bool       `json:"isRead"`
+	RelatedDispatchID *uuid.UUID `json:"relatedDispatchId,omitempty"`
+	CreatedAt         time.Time  `json:"createdAt"`
+}
+
+// NotificationRepository defines the persistence contract for notifications.
+type NotificationRepository interface {
+	// ListByUser returns a paginated list of notifications for the given user.
+	// When unreadOnly is true only unread notifications are returned.
+	ListByUser(ctx context.Context, orgID, userID uuid.UUID, unreadOnly bool, page Page) ([]Notification, error)
+
+	// UnreadCount returns the number of unread notifications for the user.
+	UnreadCount(ctx context.Context, orgID, userID uuid.UUID) (int, error)
+
+	// MarkRead marks a single notification as read.
+	// Returns ErrNotFound if the notification does not belong to the user.
+	MarkRead(ctx context.Context, orgID, notificationID, userID uuid.UUID) error
+
+	// MarkAllRead marks every unread notification for the user as read.
+	MarkAllRead(ctx context.Context, orgID, userID uuid.UUID) error
+}

@@ -74,7 +74,7 @@ const previewNavItems = ['Dashboard', 'Inbound', 'Outbound']
     <!-- Header -->
     <div>
       <h1 class="text-xl font-bold text-body">
-        Branding
+        {{ $t('admin.branding') }}
       </h1>
       <p class="text-sm text-muted mt-0.5">
         Customize workspace appearance, logo, and color scheme
@@ -95,7 +95,7 @@ const previewNavItems = ['Dashboard', 'Inbound', 'Outbound']
           <div class="p-4 space-y-4">
             <!-- Primary Color -->
             <div class="space-y-1.5">
-              <label class="text-sm font-medium text-body">Primary Color</label>
+              <label class="text-sm font-medium text-body">{{ $t('admin.primaryColor') }}</label>
               <div class="flex items-center gap-2">
                 <!-- Hidden native color input -->
                 <input
@@ -123,7 +123,7 @@ const previewNavItems = ['Dashboard', 'Inbound', 'Outbound']
             </div>
 
             <!-- Neutral Palette -->
-            <UFormField label="Neutral Palette" name="neutralPalette">
+            <UFormField :label="$t('admin.neutralPalette')" name="neutralPalette">
               <USelect
                 v-model="form.neutralPalette"
                 :items="neutralOptions"
@@ -141,7 +141,7 @@ const previewNavItems = ['Dashboard', 'Inbound', 'Outbound']
             </h2>
           </div>
           <div class="p-4">
-            <UFormField label="Font Family" name="fontFamily">
+            <UFormField :label="$t('admin.font')" name="fontFamily">
               <USelect
                 v-model="form.fontFamily"
                 :items="fontOptions"
@@ -159,7 +159,7 @@ const previewNavItems = ['Dashboard', 'Inbound', 'Outbound']
             </h2>
           </div>
           <div class="p-4 space-y-4">
-            <UFormField label="Workspace Name" name="wordmark">
+            <UFormField :label="$t('admin.wordmark')" name="wordmark">
               <UInput
                 v-model="form.wordmark"
                 placeholder="Aethel Workspace"
@@ -169,7 +169,7 @@ const previewNavItems = ['Dashboard', 'Inbound', 'Outbound']
 
             <!-- Logo upload -->
             <div class="space-y-1.5">
-              <label class="text-sm font-medium text-body">Logo</label>
+              <label class="text-sm font-medium text-body">{{ $t('admin.logo') }}</label>
               <div class="flex items-center gap-2">
                 <input
                   id="logo-upload"
@@ -186,7 +186,7 @@ const previewNavItems = ['Dashboard', 'Inbound', 'Outbound']
                     leading-icon="i-lucide-upload"
                     class="cursor-pointer"
                   >
-                    Choose file
+                    {{ $t('admin.logoUpload') }}
                   </UButton>
                 </label>
                 <span class="text-sm text-muted truncate max-w-[200px]">
@@ -208,7 +208,7 @@ const previewNavItems = ['Dashboard', 'Inbound', 'Outbound']
           class="w-full"
           @click="saveBranding"
         >
-          Save Branding
+          {{ $t('common.save') }} Branding
         </UButton>
       </div>
 
@@ -217,7 +217,7 @@ const previewNavItems = ['Dashboard', 'Inbound', 'Outbound']
         <div class="bg-surface rounded-xl border border-border-base overflow-hidden">
           <div class="px-4 py-3 border-b border-border-faint">
             <h2 class="text-sm font-semibold text-body">
-              Live Preview
+              {{ $t('admin.livePreview') }}
             </h2>
           </div>
 

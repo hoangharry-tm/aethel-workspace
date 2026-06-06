@@ -51,6 +51,7 @@ func NewServer(
 	workflowSvc *handlers.WorkflowHandler,
 	governanceSvc *service.GovernanceService,
 	adminDeps handlers.AdminDeps,
+	notifDeps handlers.NotificationDeps,
 ) *Server {
 	s := &Server{
 		db:          db,
@@ -58,7 +59,12 @@ func NewServer(
 		configCache: configCache,
 		sse:         transport.NewSSEBroker(),
 	}
-	s.router = s.buildRouter(authSvc, dispatchSvc, workflowSvc, governanceSvc, adminDeps)
+	// If the caller provided an SSEBroker in notifDeps, use it; otherwise use the
+	// one the server just created so the two are the same instance.
+	if notifDeps.SSEBroker == nil {
+		notifDeps.SSEBroker = s.sse
+	}
+	s.router = s.buildRouter(authSvc, dispatchSvc, workflowSvc, governanceSvc, adminDeps, notifDeps)
 	return s
 }
 
@@ -84,6 +90,7 @@ func (s *Server) buildRouter(
 	workflowSvc *handlers.WorkflowHandler,
 	governanceSvc *service.GovernanceService,
 	adminDeps handlers.AdminDeps,
+	notifDeps handlers.NotificationDeps,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -203,18 +210,13 @@ func (s *Server) buildRouter(
 			r.Patch("/settings", ah.UpdateSettings)
 		})
 
-		// Notifications (SSE) — Sprint 5.
-		r.With(rbac.Require("dispatch.view")).Get("/notifications/stream", func(w http.ResponseWriter, r *http.Request) {
-			userIDStr, _ := rbac.UserIDFromCtx(r.Context())
-			s.sse.ServeHTTP(w, r, userIDStr)
-		})
-		r.With(rbac.Require("dispatch.view")).Get("/notifications", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = fmt.Fprintln(w, "[]")
-		})
-		r.With(rbac.Require("dispatch.view")).Patch("/notifications/{id}/read", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusNoContent)
-		})
+		// Notifications — Sprint 5.
+		nh := handlers.NewNotificationHandler(notifDeps)
+		r.With(rbac.Require("dispatch.view")).Get("/notifications", nh.ListNotifications)
+		r.With(rbac.Require("dispatch.view")).Patch("/notifications/read-all", nh.MarkAllNotificationsRead)
+		r.With(rbac.Require("dispatch.view")).Patch("/notifications/{id}/read", nh.MarkNotificationRead)
+		// SSE stream — GET is read-only, exempt from CSRF by design.
+		r.With(rbac.Require("dispatch.view")).Get("/notifications/stream", nh.NotificationStream)
 	})
 
 	// API docs (Scalar UI + raw spec) — disabled by AETHEL_DISABLE_API_DOCS=true.

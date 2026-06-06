@@ -100,7 +100,7 @@ function handleDeleteRule(rule: EscalationRule) {
     <div class="flex items-start justify-between gap-4 flex-wrap">
       <div>
         <h1 class="text-xl font-bold text-body">
-          Escalation Rules
+          {{ $t('admin.escalationRules') }}
         </h1>
         <p class="text-sm text-muted mt-0.5">
           Automated alerts triggered when documents exceed SLA thresholds
@@ -112,7 +112,7 @@ function handleDeleteRule(rule: EscalationRule) {
         leading-icon="i-lucide-plus"
         @click="handleOpenAddRule"
       >
-        Add Rule
+        {{ $t('admin.createEscalationRule') }}
       </UButton>
     </div>
 
@@ -126,16 +126,16 @@ function handleDeleteRule(rule: EscalationRule) {
                 Rule Name
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Trigger (hours)
+                {{ $t('admin.thresholdHours') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden md:table-cell">
-                Action
+                {{ $t('admin.action') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden sm:table-cell">
                 Priority Filter
               </th>
               <th class="px-4 py-3 text-center text-xs font-semibold text-muted uppercase tracking-wider">
-                Status
+                {{ $t('common.status') }}
               </th>
               <th class="px-4 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wider">
                 &nbsp;
@@ -211,7 +211,7 @@ function handleDeleteRule(rule: EscalationRule) {
     <template #content>
       <div class="p-6 space-y-4">
         <h3 class="text-base font-semibold text-body">
-          {{ isEditingRule ? 'Edit Rule' : 'Add Escalation Rule' }}
+          {{ isEditingRule ? 'Edit Rule' : $t('admin.createEscalationRule') }}
         </h3>
 
         <UFormField label="Rule Name" required>
@@ -222,7 +222,7 @@ function handleDeleteRule(rule: EscalationRule) {
           />
         </UFormField>
 
-        <UFormField label="Overdue threshold (hours)" required>
+        <UFormField :label="$t('admin.thresholdHours')" required>
           <UInput
             v-model.number="ruleForm.threshold"
             type="number"
@@ -231,7 +231,7 @@ function handleDeleteRule(rule: EscalationRule) {
           />
         </UFormField>
 
-        <UFormField label="Action" required>
+        <UFormField :label="$t('admin.action')" required>
           <USelect
             v-model="ruleForm.action"
             :items="actionOptions"
@@ -247,16 +247,16 @@ function handleDeleteRule(rule: EscalationRule) {
           />
         </UFormField>
 
-        <UFormField label="Active">
+        <UFormField :label="$t('common.active')">
           <UToggle v-model="ruleForm.active" />
         </UFormField>
 
         <div class="flex gap-2 pt-2">
           <UButton color="primary" @click="handleSaveRule">
-            Save Rule
+            {{ $t('common.save') }}
           </UButton>
           <UButton color="neutral" variant="outline" @click="showRuleModal = false">
-            Cancel
+            {{ $t('common.cancel') }}
           </UButton>
         </div>
       </div>

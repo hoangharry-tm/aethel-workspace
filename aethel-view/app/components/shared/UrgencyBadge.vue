@@ -6,15 +6,16 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { t } = useI18n()
 
 const config = computed(() => {
   switch (props.level) {
     case 'IMMEDIATE':
-      return { color: 'error' as const, icon: 'i-lucide-zap', label: 'Immediate' }
+      return { color: 'error' as const, icon: 'i-lucide-zap' }
     case 'PRIORITY':
-      return { color: 'warning' as const, icon: 'i-lucide-alert-triangle', label: 'Priority' }
+      return { color: 'warning' as const, icon: 'i-lucide-alert-triangle' }
     case 'ROUTINE':
-      return { color: 'success' as const, icon: 'i-lucide-minus', label: 'Routine' }
+      return { color: 'success' as const, icon: 'i-lucide-minus' }
   }
 })
 </script>
@@ -26,6 +27,6 @@ const config = computed(() => {
     :leading-icon="config.icon"
     size="sm"
   >
-    {{ config.label }}
+    {{ t(`urgency.${level}`) }}
   </UBadge>
 </template>

@@ -40,10 +40,10 @@ const tabs = [
   <div class="space-y-6 max-w-5xl">
     <div>
       <h1 class="text-xl font-bold text-body">
-        My Documents
+        {{ $t('document.myDocuments') }}
       </h1>
       <p class="text-sm text-muted mt-0.5">
-        Documents assigned to you
+        {{ $t('document.noDocuments') }}
       </p>
     </div>
 
@@ -76,7 +76,7 @@ const tabs = [
       >
         <UIcon name="i-lucide-check-circle" class="h-12 w-12 text-emerald-300 mb-3" />
         <p class="text-base font-semibold text-muted">
-          You're all caught up!
+          {{ $t('nav.allCaughtUp') }}
         </p>
         <p class="text-sm text-icon-disabled mt-1">
           No documents require your action right now.
@@ -89,22 +89,22 @@ const tabs = [
           <thead class="bg-subtle border-b border-border-base">
             <tr>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Tracking ID
+                {{ $t('dispatch.trackingNumber') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Subject
+                {{ $t('dispatch.subject') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden sm:table-cell">
-                Priority
+                {{ $t('dispatch.priority') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Status
+                {{ $t('common.status') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden md:table-cell">
-                Updated
+                {{ $t('common.updatedAt') }}
               </th>
               <th class="px-4 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wider">
-                Actions
+                {{ $t('common.actions') }}
               </th>
             </tr>
           </thead>
@@ -140,7 +140,7 @@ const tabs = [
                     variant="soft"
                     size="xs"
                   >
-                    Acknowledge
+                    {{ $t('dispatch.acknowledge') }}
                   </UButton>
                   <UButton
                     :to="`/documents/${doc.id}`"
@@ -148,7 +148,7 @@ const tabs = [
                     variant="outline"
                     size="xs"
                   >
-                    View
+                    {{ $t('common.view') }}
                   </UButton>
                 </div>
               </td>

@@ -56,7 +56,7 @@ async function handleSubmit() {
       />
       <div>
         <h1 class="text-xl font-bold text-body">
-          Submit Outgoing Request
+          {{ $t('dispatch.newOutbound') }}
         </h1>
         <p class="text-sm text-muted mt-0.5">
           Request reception to dispatch a document on your behalf
@@ -66,7 +66,7 @@ async function handleSubmit() {
 
     <form @submit.prevent="handleSubmit">
       <div class="bg-surface rounded-xl border border-border-base p-6 space-y-5">
-        <UFormField label="Recipient Name" name="recipientName" required>
+        <UFormField :label="$t('dispatch.recipient') + ' Name'" name="recipientName" required>
           <UInput
             v-model="form.recipientName"
             placeholder="Full name of recipient"
@@ -74,25 +74,25 @@ async function handleSubmit() {
           />
         </UFormField>
 
-        <UFormField label="Recipient Organization / Address" name="recipientOrgAddress" required>
+        <UFormField :label="$t('dispatch.recipientOrg') + ' / Address'" name="recipientOrgAddress" required>
           <UTextarea
             v-model="form.recipientOrgAddress"
-            placeholder="Organization and delivery address"
+            :placeholder="$t('dispatch.recipientAddress')"
             :rows="2"
             class="w-full"
           />
         </UFormField>
 
-        <UFormField label="Document Type" name="documentType" required>
+        <UFormField :label="$t('dispatch.documentType')" name="documentType" required>
           <USelect
             v-model="form.documentType"
             :items="documentTypeOptions"
-            placeholder="Select document type"
+            :placeholder="$t('dispatch.documentType')"
             class="w-full"
           />
         </UFormField>
 
-        <UFormField label="Urgency" name="urgency">
+        <UFormField :label="$t('dispatch.priority')" name="urgency">
           <USelect
             v-model="form.urgency"
             :items="urgencyOptions"
@@ -103,7 +103,7 @@ async function handleSubmit() {
         <!-- Attachment zone -->
         <div>
           <p class="text-sm font-medium text-body mb-2">
-            Attachment (Optional)
+            {{ $t('document.attachments') }} ({{ $t('common.optional') }})
           </p>
           <div class="border-2 border-dashed border-border-base rounded-lg p-6 flex flex-col items-center justify-center text-center hover:border-accent/50 hover:bg-accent/5 transition-colors cursor-pointer">
             <UIcon name="i-lucide-upload-cloud" class="h-8 w-8 text-icon-faint mb-2" />
@@ -134,7 +134,7 @@ async function handleSubmit() {
           :loading="loading"
           leading-icon="i-lucide-send"
         >
-          Submit Request
+          {{ $t('common.submit') }}
         </UButton>
         <UButton
           type="button"
@@ -142,7 +142,7 @@ async function handleSubmit() {
           variant="outline"
           to="/my-documents"
         >
-          Cancel
+          {{ $t('common.cancel') }}
         </UButton>
       </div>
     </form>

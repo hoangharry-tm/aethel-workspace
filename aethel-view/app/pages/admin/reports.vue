@@ -43,7 +43,7 @@ function handleExport() {
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-xl font-bold text-body">
-          Reports & Analytics
+          {{ $t('admin.reports') }}
         </h1>
         <p class="text-sm text-muted mt-0.5">
           Document flow metrics and SLA performance
@@ -60,7 +60,7 @@ function handleExport() {
           <USelect v-model="exportFormat" :items="formatItems" />
         </UFormField>
         <UButton color="primary" icon="i-lucide-download" @click="handleExport">
-          Export Report
+          {{ $t('common.export') }} Report
         </UButton>
       </div>
     </div>
@@ -102,7 +102,7 @@ function handleExport() {
       <UCard>
         <template #header>
           <p class="font-semibold text-body">
-            Document Volume by Period
+            {{ $t('admin.dispatchVolume') }}
           </p>
         </template>
         <div class="h-64 flex flex-col items-center justify-center gap-2 bg-subtle rounded-xl">
@@ -148,13 +148,13 @@ function handleExport() {
                 Tracking #
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Subject
+                {{ $t('dispatch.subject') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Status
+                {{ $t('common.status') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden sm:table-cell">
-                Priority
+                {{ $t('dispatch.priority') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden md:table-cell">
                 Received

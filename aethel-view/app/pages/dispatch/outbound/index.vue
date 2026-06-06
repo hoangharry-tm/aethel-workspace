@@ -56,7 +56,7 @@ function timeAgo(timestamp: string): string {
     <div class="flex items-center justify-between gap-4 flex-wrap">
       <div>
         <h1 class="text-xl font-bold text-body">
-          Outbound Documents
+          {{ $t('dispatch.outboxTitle') }}
         </h1>
         <p class="text-sm text-muted mt-0.5">
           Outgoing dispatch requests from staff
@@ -71,25 +71,25 @@ function timeAgo(timestamp: string): string {
           <thead class="bg-subtle border-b border-border-base">
             <tr>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Tracking ID
+                {{ $t('dispatch.trackingNumber') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Subject
+                {{ $t('dispatch.subject') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden sm:table-cell">
                 Requested By
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Priority
+                {{ $t('dispatch.priority') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Status
+                {{ $t('common.status') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden md:table-cell">
                 Submitted
               </th>
               <th class="px-4 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wider">
-                Actions
+                {{ $t('common.actions') }}
               </th>
             </tr>
           </thead>
@@ -137,7 +137,7 @@ function timeAgo(timestamp: string): string {
                     variant="outline"
                     size="xs"
                   >
-                    View
+                    {{ $t('common.view') }}
                   </UButton>
                 </div>
               </td>
@@ -166,7 +166,7 @@ function timeAgo(timestamp: string): string {
           </div>
         </div>
 
-        <UFormField label="Delivery Method" name="method">
+        <UFormField :label="$t('dispatch.deliveryMode')" name="method">
           <USelect
             v-model="dispatchMethod"
             :items="deliveryMethodOptions"
@@ -189,7 +189,7 @@ function timeAgo(timestamp: string): string {
             variant="outline"
             @click="showDispatchModal = false"
           >
-            Cancel
+            {{ $t('common.cancel') }}
           </UButton>
         </div>
       </div>

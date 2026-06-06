@@ -664,3 +664,123 @@ queries:
                   created_at, updated_at
       timeout_ms: 3000
       required_permission: "admin.access"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # NOTIFICATIONS
+  # ══════════════════════════════════════════════════════════════════════════
+  notifications:
+    list_by_user:
+      statement: |
+        SELECT id, user_id, title, body, type, is_read, related_dispatch_id, created_at
+        FROM notifications
+        WHERE user_id = $2 AND organization_id = $1
+          AND ($3::boolean IS NULL OR is_read = NOT $3)
+        ORDER BY created_at DESC
+        LIMIT $4 OFFSET $5
+      params:
+        - "uuid"     # $1: organization_id
+        - "uuid"     # $2: user_id
+        - "boolean"  # $3: unread_only (nullable)
+        - "integer"  # $4: limit
+        - "integer"  # $5: offset
+      timeout_ms: 2000
+      required_permission: "notification.read"
+
+    unread_count:
+      statement: |
+        SELECT COUNT(*) FROM notifications
+        WHERE user_id = $2 AND organization_id = $1 AND is_read = false
+      params:
+        - "uuid"  # $1: organization_id
+        - "uuid"  # $2: user_id
+      timeout_ms: 1000
+
+    mark_read:
+      statement: |
+        UPDATE notifications SET is_read = true, updated_at = NOW()
+        WHERE id = $2 AND user_id = $3 AND organization_id = $1
+      params:
+        - "uuid"  # $1: organization_id
+        - "uuid"  # $2: notification_id
+        - "uuid"  # $3: user_id
+      timeout_ms: 2000
+
+    mark_all_read:
+      statement: |
+        UPDATE notifications SET is_read = true, updated_at = NOW()
+        WHERE user_id = $2 AND organization_id = $1 AND is_read = false
+      params:
+        - "uuid"  # $1: organization_id
+        - "uuid"  # $2: user_id
+      timeout_ms: 2000
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # SEARCH
+  # ══════════════════════════════════════════════════════════════════════════
+  search:
+    fulltext_dispatches:
+      statement: |
+        SELECT
+          d.id, d.tracking_number, d.subject_line, d.priority_level, d.status_state,
+          d.created_at, dt.name AS document_type_name,
+          dept.name AS assigned_department_name
+        FROM dispatches d
+        LEFT JOIN document_types dt ON dt.id = d.document_type_id
+        LEFT JOIN departments dept ON dept.id = d.assigned_department_id
+        WHERE d.organization_id = $1
+          AND (
+            to_tsvector('english', coalesce(d.subject_line,'') || ' ' || coalesce(d.tracking_number,'') || ' ' || coalesce(d.sender_name,''))
+            @@ plainto_tsquery('english', $2)
+            OR d.tracking_number ILIKE '%' || $2 || '%'
+          )
+        ORDER BY d.created_at DESC
+        LIMIT 50
+      params:
+        - "uuid"    # $1: organization_id
+        - "varchar" # $2: query string
+      timeout_ms: 3000
+      required_permission: "dispatch.view"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # ADMIN REPORTS
+  # ══════════════════════════════════════════════════════════════════════════
+  admin:
+    dispatch_volume_by_period:
+      statement: |
+        SELECT
+          date_trunc($3, created_at) AS period,
+          COUNT(*) AS total,
+          COUNT(*) FILTER (WHERE priority_level = 'IMMEDIATE') AS immediate,
+          COUNT(*) FILTER (WHERE priority_level = 'PRIORITY') AS priority_count,
+          COUNT(*) FILTER (WHERE priority_level = 'ROUTINE') AS routine
+        FROM dispatches
+        WHERE organization_id = $1
+          AND created_at BETWEEN $2::timestamptz AND $4::timestamptz
+        GROUP BY 1
+        ORDER BY 1
+      params:
+        - "uuid"        # $1: organization_id
+        - "timestamptz" # $2: from
+        - "varchar"     # $3: group_by (day/week/month)
+        - "timestamptz" # $4: to
+      timeout_ms: 10000
+      required_permission: "admin.access"
+
+    user_activity_summary:
+      statement: |
+        SELECT
+          u.id,
+          u.full_name,
+          u.role,
+          COUNT(d.id) AS dispatches_created,
+          COUNT(d.id) FILTER (WHERE d.status_state = 'DELIVERED') AS dispatches_delivered,
+          MAX(d.created_at) AS last_activity
+        FROM users u
+        LEFT JOIN dispatches d ON d.created_by_user_id = u.id AND d.organization_id = $1
+        WHERE u.organization_id = $1 AND u.is_active = true
+        GROUP BY u.id, u.full_name, u.role
+        ORDER BY last_activity DESC NULLS LAST
+      params:
+        - "uuid"  # $1: organization_id
+      timeout_ms: 10000
+      required_permission: "admin.access"

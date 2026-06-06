@@ -85,7 +85,7 @@ function handleDeleteConfirm() {
     <!-- Header -->
     <div class="flex items-center justify-between gap-4 flex-wrap">
       <h1 class="text-xl font-bold text-body">
-        Document Types
+        {{ $t('admin.documentTypes') }}
       </h1>
       <UButton
         color="primary"
@@ -93,7 +93,7 @@ function handleDeleteConfirm() {
         leading-icon="i-lucide-plus"
         @click="handleOpenAddModal"
       >
-        Add Document Type
+        {{ $t('admin.createDocType') }}
       </UButton>
     </div>
 
@@ -122,7 +122,7 @@ function handleDeleteConfirm() {
             variant="soft"
             size="xs"
           >
-            {{ type.active ? 'Active' : 'Inactive' }}
+            {{ type.active ? $t('common.active') : $t('common.inactive') }}
           </UBadge>
         </div>
 
@@ -158,10 +158,10 @@ function handleDeleteConfirm() {
     <template #content>
       <div class="p-6 space-y-4">
         <h3 class="text-base font-semibold text-body">
-          {{ isEditingDocType ? 'Edit Document Type' : 'Add Document Type' }}
+          {{ isEditingDocType ? $t('admin.documentTypes') : $t('admin.createDocType') }}
         </h3>
 
-        <UFormField label="Name" required>
+        <UFormField :label="$t('common.name')" required>
           <UInput
             v-model="docTypeForm.name"
             placeholder="e.g. Internal Memo"
@@ -169,7 +169,7 @@ function handleDeleteConfirm() {
           />
         </UFormField>
 
-        <UFormField label="Description">
+        <UFormField :label="$t('common.description')">
           <UTextarea
             v-model="docTypeForm.description"
             :rows="3"
@@ -185,16 +185,16 @@ function handleDeleteConfirm() {
           />
         </UFormField>
 
-        <UFormField label="Active">
+        <UFormField :label="$t('common.active')">
           <UToggle v-model="docTypeForm.active" />
         </UFormField>
 
         <div class="flex gap-2 pt-2">
           <UButton color="primary" @click="handleSaveDocType">
-            Save
+            {{ $t('common.save') }}
           </UButton>
           <UButton color="neutral" variant="outline" @click="showDocTypeModal = false">
-            Cancel
+            {{ $t('common.cancel') }}
           </UButton>
         </div>
       </div>
@@ -211,7 +211,7 @@ function handleDeleteConfirm() {
           </div>
           <div>
             <h3 class="text-base font-semibold text-body">
-              Delete Document Type
+              {{ $t('common.delete') }} Document Type
             </h3>
             <p class="text-sm text-muted">
               {{ selectedDocType?.name }}
@@ -223,10 +223,10 @@ function handleDeleteConfirm() {
         </p>
         <div class="flex gap-2 pt-2">
           <UButton color="error" @click="handleDeleteConfirm">
-            Delete
+            {{ $t('common.delete') }}
           </UButton>
           <UButton color="neutral" variant="outline" @click="showDeleteModal = false">
-            Cancel
+            {{ $t('common.cancel') }}
           </UButton>
         </div>
       </div>

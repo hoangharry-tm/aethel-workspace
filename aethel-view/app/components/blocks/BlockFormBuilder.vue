@@ -79,7 +79,7 @@ function selectItems(options: string[] = []) {
           leading-icon="i-lucide-send"
           @click="handleSubmit"
         >
-          Submit
+          {{ $t('common.submit') }}
         </UButton>
       </div>
     </div>

@@ -4,6 +4,7 @@ import type { TimelineEvent } from '~/components/shared/EventTimeline.vue'
 
 definePageMeta({ layout: 'workspace' })
 
+const { t } = useI18n()
 const route = useRoute()
 const { documents, currentUser } = useMockData()
 const toast = useToast()
@@ -230,10 +231,10 @@ async function handleApproveSheet() {
   toast.add({ title: 'Sheet approved', description: 'Minute sheet has been approved and locked.', color: 'success', icon: 'i-lucide-check-circle' })
 }
 
-const tabItems = [
-  { label: 'Document Details', slot: 'details' as const },
-  { label: 'Green Notes', slot: 'notes' as const },
-]
+const tabItems = computed(() => [
+  { label: t('document.details'), slot: 'details' as const },
+  { label: t('workflow.greenNotes'), slot: 'notes' as const },
+])
 </script>
 
 <template>
@@ -248,7 +249,7 @@ const tabItems = [
         @click="$router.back()"
       />
       <h1 class="text-xl font-bold text-body">
-        Document Detail
+        {{ $t('document.details') }}
       </h1>
     </div>
 
@@ -281,7 +282,7 @@ const tabItems = [
               <!-- Subject -->
               <div>
                 <p class="text-xs font-semibold uppercase tracking-wider text-icon-disabled mb-1">
-                  Subject
+                  {{ $t('dispatch.subject') }}
                 </p>
                 <p class="text-sm font-medium text-body">
                   {{ doc?.subject }}
@@ -296,7 +297,7 @@ const tabItems = [
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <p class="text-xs text-muted">
-                      Name
+                      {{ $t('common.name') }}
                     </p>
                     <p class="text-sm font-medium text-body">
                       {{ doc?.senderName }}
@@ -304,7 +305,7 @@ const tabItems = [
                   </div>
                   <div>
                     <p class="text-xs text-muted">
-                      Organization
+                      {{ $t('dispatch.senderOrg') }}
                     </p>
                     <p class="text-sm font-medium text-body">
                       {{ doc?.senderOrg }}
@@ -312,7 +313,7 @@ const tabItems = [
                   </div>
                   <div>
                     <p class="text-xs text-muted">
-                      Delivery Mode
+                      {{ $t('dispatch.deliveryMode') }}
                     </p>
                     <p class="text-sm font-medium text-body">
                       {{ deliveryModeLabel[doc?.deliveryMode ?? ''] ?? doc?.deliveryMode }}
@@ -336,7 +337,7 @@ const tabItems = [
                 </p>
                 <div class="mb-2">
                   <p class="text-xs text-muted">
-                    Assigned To
+                    {{ $t('dispatch.assignedTo') }}
                   </p>
                   <p class="text-sm font-medium text-body">
                     {{ doc?.department }} Department
@@ -362,7 +363,7 @@ const tabItems = [
               <!-- Attachments -->
               <div>
                 <p class="text-xs font-semibold uppercase tracking-wider text-icon-disabled mb-3">
-                  Attachments
+                  {{ $t('document.attachments') }}
                 </p>
                 <div
                   v-for="file in doc?.attachments"
@@ -393,7 +394,7 @@ const tabItems = [
                   leading-icon="i-lucide-check-circle"
                   @click="showAckModal = true"
                 >
-                  Acknowledge Receipt
+                  {{ $t('dispatch.acknowledge') }}
                 </UButton>
                 <UButton
                   color="neutral"
@@ -410,7 +411,7 @@ const tabItems = [
           <div class="lg:col-span-2">
             <div class="bg-surface rounded-xl border border-border-base p-6 sticky top-6">
               <h2 class="text-sm font-semibold text-body mb-6">
-                Event Timeline
+                {{ $t('dispatch.timeline') }}
               </h2>
               <EventTimeline :events="timelineEvents" />
             </div>
@@ -423,7 +424,7 @@ const tabItems = [
           <!-- Action bar -->
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-semibold text-body">Minute Sheet — Green Notes</p>
+              <p class="text-sm font-semibold text-body">{{ $t('workflow.minuteSheet') }} — {{ $t('workflow.greenNotes') }}</p>
               <p class="text-xs text-muted">Hash-chained and tamper-evident</p>
             </div>
             <div class="flex gap-2">
@@ -434,7 +435,7 @@ const tabItems = [
                 leading-icon="i-lucide-check-circle"
                 @click="showApproveModal = true"
               >
-                Approve Sheet
+                {{ $t('workflow.approve') }} Sheet
               </UButton>
               <UButton
                 color="primary"
@@ -442,7 +443,7 @@ const tabItems = [
                 leading-icon="i-lucide-plus"
                 @click="handleOpenAddNote"
               >
-                Add Note
+                {{ $t('workflow.addNote') }}
               </UButton>
             </div>
           </div>
@@ -467,10 +468,10 @@ const tabItems = [
                         <p class="text-xs text-muted">{{ note.authorRole }} · {{ timeAgo(note.timestamp) }}</p>
                       </div>
                       <UBadge v-if="note.chainIntact" color="success" variant="soft" size="xs" leading-icon="i-lucide-link">
-                        Chain intact
+                        {{ $t('workflow.verified') }}
                       </UBadge>
                       <UBadge v-else color="error" variant="soft" size="xs" leading-icon="i-lucide-link-2-off">
-                        Chain broken
+                        {{ $t('workflow.tampered') }}
                       </UBadge>
                     </div>
                     <p class="text-sm text-body leading-relaxed">{{ note.content }}</p>
@@ -550,14 +551,14 @@ const tabItems = [
             leading-icon="i-lucide-check"
             @click="confirmHandoff"
           >
-            Confirm & Sign
+            Confirm &amp; Sign
           </UButton>
           <UButton
             color="neutral"
             variant="outline"
             @click="showHandoffModal = false"
           >
-            Cancel
+            {{ $t('common.cancel') }}
           </UButton>
         </div>
       </div>
@@ -574,7 +575,7 @@ const tabItems = [
           </div>
           <div>
             <h3 class="text-base font-semibold text-body">
-              Acknowledge Receipt
+              {{ $t('dispatch.acknowledge') }}
             </h3>
             <p class="text-xs text-muted">
               {{ doc?.trackingNumber }}
@@ -601,7 +602,7 @@ const tabItems = [
             variant="outline"
             @click="showAckModal = false"
           >
-            Cancel
+            {{ $t('common.cancel') }}
           </UButton>
         </div>
       </div>
@@ -617,11 +618,11 @@ const tabItems = [
             <UIcon name="i-lucide-notebook-pen" class="h-5 w-5 text-accent" />
           </div>
           <div>
-            <h3 class="text-base font-semibold text-body">Add Green Note</h3>
+            <h3 class="text-base font-semibold text-body">{{ $t('workflow.addNote') }}</h3>
             <p class="text-xs text-muted">Appended immutably to the minute sheet</p>
           </div>
         </div>
-        <UFormField label="Note Content" name="noteContent">
+        <UFormField :label="$t('workflow.noteContent')" name="noteContent">
           <UTextarea
             v-model="newNoteContent"
             :rows="5"
@@ -639,9 +640,9 @@ const tabItems = [
             leading-icon="i-lucide-check"
             @click="handleSubmitNote"
           >
-            Submit Note
+            {{ $t('common.submit') }}
           </UButton>
-          <UButton color="neutral" variant="outline" @click="showAddNoteModal = false">Cancel</UButton>
+          <UButton color="neutral" variant="outline" @click="showAddNoteModal = false">{{ $t('common.cancel') }}</UButton>
         </div>
       </div>
     </template>
@@ -656,7 +657,7 @@ const tabItems = [
             <UIcon name="i-lucide-check-circle" class="h-5 w-5 text-success" />
           </div>
           <div>
-            <h3 class="text-base font-semibold text-body">Approve Minute Sheet</h3>
+            <h3 class="text-base font-semibold text-body">{{ $t('workflow.approve') }} {{ $t('workflow.minuteSheet') }}</h3>
             <p class="text-xs text-muted">{{ doc?.trackingNumber }}</p>
           </div>
         </div>
@@ -669,9 +670,9 @@ const tabItems = [
             leading-icon="i-lucide-check"
             @click="handleApproveSheet"
           >
-            Confirm Approval
+            {{ $t('common.confirm') }}
           </UButton>
-          <UButton color="neutral" variant="outline" @click="showApproveModal = false">Cancel</UButton>
+          <UButton color="neutral" variant="outline" @click="showApproveModal = false">{{ $t('common.cancel') }}</UButton>
         </div>
       </div>
     </template>

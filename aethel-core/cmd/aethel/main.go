@@ -183,8 +183,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	// Sprint 4 — governance repositories.
 	var (
-		docTypeRepo     domain.DocumentTypeRepository   = &noopDocTypeRepo{}
-		escRuleRepo     domain.EscalationRuleRepository = repos.NewEscalationRuleRepo(db, queries)
+		docTypeRepo  domain.DocumentTypeRepository   = &noopDocTypeRepo{}
+		escRuleRepo  domain.EscalationRuleRepository = repos.NewEscalationRuleRepo(db, queries)
+		notifRepo    domain.NotificationRepository   = repos.NewNotificationRepo(db, queries)
 	)
 
 	// 8. Wire services.
@@ -207,12 +208,17 @@ func runServe(cmd *cobra.Command, args []string) error {
 		Audit:        auditWriter,
 	}
 
+	notifDeps := handlers.NotificationDeps{
+		Repo: notifRepo,
+		// SSEBroker is left nil here; NewServer will assign the server-owned broker.
+	}
+
 	// 10. Validate OpenAPI spec at startup. Panics if the spec is malformed.
 	docs.ValidateSpec()
 
 	// 11. Start HTTP server.
 	addr := envAddr()
-	srv := api.NewServer(db, queries, configCache, authHandler, dispatchHandler, workflowHandler, governanceSvc, adminDeps)
+	srv := api.NewServer(db, queries, configCache, authHandler, dispatchHandler, workflowHandler, governanceSvc, adminDeps, notifDeps)
 
 	// 12. Start escalation worker after server is ready.
 	ctx, cancel := context.WithCancel(ctx)

@@ -107,7 +107,7 @@ function handleClearFilters() {
     <div class="flex justify-between items-start gap-4 flex-wrap">
       <div>
         <h1 class="text-xl font-bold text-body">
-          Audit Ledger
+          {{ $t('admin.auditLog') }}
         </h1>
         <p class="text-sm text-muted mt-0.5">
           Immutable security event log with tamper detection
@@ -119,7 +119,7 @@ function handleClearFilters() {
         leading-icon="i-lucide-download"
         @click="handleExportCsv"
       >
-        Export CSV
+        {{ $t('common.export') }} CSV
       </UButton>
     </div>
 
@@ -189,7 +189,7 @@ function handleClearFilters() {
                 IP Address
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Status
+                {{ $t('common.status') }}
               </th>
               <th class="px-4 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wider w-10" />
             </tr>
@@ -274,7 +274,7 @@ function handleClearFilters() {
                   name="i-lucide-shield-off"
                   class="h-8 w-8 mx-auto mb-2 text-icon-faint"
                 />
-                No audit entries match the current filters.
+                {{ $t('common.noResults') }}
               </td>
             </tr>
           </tbody>

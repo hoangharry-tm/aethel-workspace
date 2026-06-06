@@ -3,6 +3,7 @@ import { useMockData } from "~/composables/useMockData";
 
 definePageMeta({ layout: "workspace" });
 
+const { t } = useI18n()
 const { documents } = useMockData();
 
 const activeFilter = ref<"all" | "pending" | "in-transit" | "delivered">("all");
@@ -41,12 +42,12 @@ function timeAgo(timestamp: string): string {
   return `${days}d ago`;
 }
 
-const filterTabs = [
-  { key: "all" as const, label: "All" },
+const filterTabs = computed(() => [
+  { key: "all" as const, label: t('common.all') },
   { key: "pending" as const, label: "Pending" },
   { key: "in-transit" as const, label: "In Transit" },
   { key: "delivered" as const, label: "Delivered" },
-];
+])
 
 const statCards = computed(() => [
   {
@@ -58,7 +59,7 @@ const statCards = computed(() => [
     ring: "ring-amber-200",
   },
   {
-    label: "In Transit",
+    label: t('dashboard.inTransit'),
     value: stats.value.inTransit,
     icon: "i-lucide-truck",
     color: "text-sky-600",
@@ -74,7 +75,7 @@ const statCards = computed(() => [
     ring: "ring-emerald-200",
   },
   {
-    label: "Escalated",
+    label: t('dashboard.escalated'),
     value: stats.value.escalated,
     icon: "i-lucide-bell-ring",
     color: "text-rose-600",
@@ -89,7 +90,7 @@ const statCards = computed(() => [
     <!-- Page header -->
     <div class="flex items-start justify-between gap-4 flex-wrap">
       <div>
-        <h1 class="text-xl font-bold text-body">Reception Dashboard</h1>
+        <h1 class="text-xl font-bold text-body">{{ $t('dashboard.title') }}</h1>
         <p class="text-sm text-muted mt-0.5">
           Live document queue · auto-refreshes every 30s
         </p>
@@ -104,7 +105,7 @@ const statCards = computed(() => [
             class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"
           />
         </span>
-        <span class="text-xs font-medium text-emerald-600">Live</span>
+        <span class="text-xs font-medium text-emerald-600">{{ $t('dashboard.live') }}</span>
       </div>
     </div>
 
@@ -159,32 +160,32 @@ const statCards = computed(() => [
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider"
               >
-                Tracking ID
+                {{ $t('dispatch.trackingNumber') }}
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider"
               >
-                Subject
+                {{ $t('dispatch.subject') }}
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden sm:table-cell"
               >
-                Sender
+                {{ $t('dispatch.sender') }}
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider"
               >
-                Priority
+                {{ $t('dispatch.priority') }}
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider"
               >
-                Status
+                {{ $t('common.status') }}
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden lg:table-cell"
               >
-                Department
+                {{ $t('dispatch.department') }}
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden md:table-cell"
@@ -194,7 +195,7 @@ const statCards = computed(() => [
               <th
                 class="px-4 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wider"
               >
-                Actions
+                {{ $t('common.actions') }}
               </th>
             </tr>
           </thead>
@@ -240,7 +241,7 @@ const statCards = computed(() => [
                   variant="outline"
                   size="xs"
                 >
-                  View
+                  {{ $t('common.view') }}
                 </UButton>
               </td>
             </tr>
@@ -251,7 +252,7 @@ const statCards = computed(() => [
                   class="h-8 w-8 text-icon-faint mx-auto mb-2"
                 />
                 <p class="text-sm text-icon-disabled">
-                  No documents in this category
+                  {{ $t('common.noResults') }}
                 </p>
               </td>
             </tr>

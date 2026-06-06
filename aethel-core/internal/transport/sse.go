@@ -45,6 +45,36 @@ func (b *SSEBroker) Publish(userID string, event Event) {
 	}
 }
 
+// Subscribe registers a new channel for userID.
+// Returns the receive-only channel and a cleanup function that must be called
+// (typically via defer) to remove the subscriber and close the channel.
+func (b *SSEBroker) Subscribe(userID string) (<-chan Event, func()) {
+	ch := make(chan Event, 64)
+	sub := &subscriber{ch: ch, userID: userID}
+
+	b.mu.Lock()
+	b.subscribers[userID] = append(b.subscribers[userID], sub)
+	b.mu.Unlock()
+
+	cleanup := func() {
+		b.mu.Lock()
+		subs := b.subscribers[userID]
+		for i, s := range subs {
+			if s == sub {
+				b.subscribers[userID] = append(subs[:i], subs[i+1:]...)
+				break
+			}
+		}
+		if len(b.subscribers[userID]) == 0 {
+			delete(b.subscribers, userID)
+		}
+		b.mu.Unlock()
+		close(ch)
+	}
+
+	return ch, cleanup
+}
+
 // ServeHTTP handles an SSE connection for the authenticated user.
 // The userID must be set on the request context before this handler runs.
 func (b *SSEBroker) ServeHTTP(w http.ResponseWriter, r *http.Request, userID string) {

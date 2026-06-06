@@ -125,7 +125,7 @@ function removeStop(i: number) {
     <div class="flex items-center justify-between gap-4 flex-wrap">
       <div>
         <h1 class="text-xl font-bold text-body">
-          Routing Rules
+          {{ $t('admin.routingRules') }}
         </h1>
         <p class="text-sm text-muted mt-0.5">
           Define how documents are automatically routed by type and sender
@@ -137,7 +137,7 @@ function removeStop(i: number) {
         leading-icon="i-lucide-plus"
         @click="openNewRule"
       >
-        New Rule
+        {{ $t('admin.createRule') }}
       </UButton>
     </div>
 
@@ -159,19 +159,19 @@ function removeStop(i: number) {
                 #
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Conditions
+                {{ $t('admin.conditions') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Destination
+                {{ $t('admin.destinations') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden md:table-cell">
                 Route
               </th>
               <th class="px-4 py-3 text-center text-xs font-semibold text-muted uppercase tracking-wider">
-                Active
+                {{ $t('common.active') }}
               </th>
               <th class="px-4 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wider">
-                Actions
+                {{ $t('common.actions') }}
               </th>
             </tr>
           </thead>
@@ -259,16 +259,16 @@ function removeStop(i: number) {
           {{ isEditing ? 'Edit Rule' : 'New Routing Rule' }}
         </h3>
 
-        <UFormField label="Document Type" name="documentType" required>
+        <UFormField :label="$t('dispatch.documentType')" name="documentType" required>
           <USelect
             v-model="modalForm.documentType"
             :items="documentTypeOptions"
-            placeholder="Select document type"
+            :placeholder="$t('dispatch.documentType')"
             class="w-full"
           />
         </UFormField>
 
-        <UFormField label="Sender Organization (optional)" name="senderOrg">
+        <UFormField :label="$t('dispatch.senderOrg') + ' (optional)'" name="senderOrg">
           <UInput
             v-model="modalForm.senderOrg"
             placeholder="e.g. Ernst & Young"
@@ -276,7 +276,7 @@ function removeStop(i: number) {
           />
         </UFormField>
 
-        <UFormField label="Urgency (optional)" name="urgency">
+        <UFormField :label="$t('dispatch.priority') + ' (optional)'" name="urgency">
           <USelect
             v-model="modalForm.urgency"
             :items="urgencyOptions"
@@ -334,7 +334,7 @@ function removeStop(i: number) {
             leading-icon="i-lucide-plus"
             @click="addStop"
           >
-            Add stop
+            {{ $t('common.add') }} stop
           </UButton>
         </div>
 
@@ -344,14 +344,14 @@ function removeStop(i: number) {
             variant="solid"
             @click="saveRule"
           >
-            {{ isEditing ? 'Save Changes' : 'Create Rule' }}
+            {{ isEditing ? 'Save Changes' : $t('admin.createRule') }}
           </UButton>
           <UButton
             color="neutral"
             variant="outline"
             @click="showRuleModal = false"
           >
-            Cancel
+            {{ $t('common.cancel') }}
           </UButton>
         </div>
       </div>

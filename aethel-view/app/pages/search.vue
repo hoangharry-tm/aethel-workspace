@@ -97,7 +97,7 @@ function clearFilters() {
 <template>
   <div class="space-y-6">
     <div>
-      <h1 class="text-xl font-bold text-body">Search Documents</h1>
+      <h1 class="text-xl font-bold text-body">{{ $t('search.title') }}</h1>
       <p class="text-sm text-muted mt-0.5">
         Search by tracking number, sender, or subject
       </p>
@@ -108,7 +108,7 @@ function clearFilters() {
       <UInput
         v-model="searchQuery"
         icon="i-lucide-search"
-        placeholder="Search by tracking number, sender name, or subject..."
+        :placeholder="$t('search.placeholder')"
         size="lg"
         class="w-full"
       />
@@ -166,27 +166,27 @@ function clearFilters() {
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider"
               >
-                Tracking ID
+                {{ $t('dispatch.trackingNumber') }}
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider"
               >
-                Subject
+                {{ $t('dispatch.subject') }}
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden sm:table-cell"
               >
-                Sender
+                {{ $t('dispatch.sender') }}
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider"
               >
-                Priority
+                {{ $t('dispatch.priority') }}
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider"
               >
-                Status
+                {{ $t('common.status') }}
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden md:table-cell"
@@ -196,7 +196,7 @@ function clearFilters() {
               <th
                 class="px-4 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wider"
               >
-                Actions
+                {{ $t('common.actions') }}
               </th>
             </tr>
           </thead>
@@ -237,7 +237,7 @@ function clearFilters() {
                   variant="outline"
                   size="xs"
                 >
-                  View
+                  {{ $t('common.view') }}
                 </UButton>
               </td>
             </tr>
@@ -250,7 +250,7 @@ function clearFilters() {
                   class="h-10 w-10 text-icon-faint mx-auto mb-3"
                 />
                 <p class="text-sm font-medium text-muted">
-                  No results found
+                  {{ $t('common.noResults') }}
                 </p>
                 <p class="text-xs text-icon-disabled mt-1">
                   Try adjusting your search terms or filters

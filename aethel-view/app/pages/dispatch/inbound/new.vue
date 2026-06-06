@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'workspace' })
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 
@@ -97,7 +98,7 @@ async function handleSubmit() {
             Document Information
           </h2>
 
-          <UFormField label="Sender Name" name="senderName" required>
+          <UFormField :label="$t('dispatch.sender') + ' Name'" name="senderName" required>
             <UInput
               v-model="form.senderName"
               placeholder="e.g. Ernst & Young LLP"
@@ -105,7 +106,7 @@ async function handleSubmit() {
             />
           </UFormField>
 
-          <UFormField label="Sender Organization" name="senderOrg" required>
+          <UFormField :label="$t('dispatch.senderOrg')" name="senderOrg" required>
             <UInput
               v-model="form.senderOrg"
               placeholder="e.g. Ernst & Young"
@@ -113,11 +114,11 @@ async function handleSubmit() {
             />
           </UFormField>
 
-          <UFormField label="Document Type" name="documentType" required>
+          <UFormField :label="$t('dispatch.documentType')" name="documentType" required>
             <USelect
               v-model="form.documentType"
               :items="documentTypeOptions"
-              placeholder="Select document type"
+              :placeholder="$t('dispatch.documentType')"
               class="w-full"
             />
           </UFormField>
@@ -130,7 +131,7 @@ async function handleSubmit() {
             />
           </UFormField>
 
-          <UFormField label="Delivery Mode" name="deliveryMode" required>
+          <UFormField :label="$t('dispatch.deliveryMode')" name="deliveryMode" required>
             <USelect
               v-model="form.deliveryMode"
               :items="deliveryModeOptions"
@@ -165,14 +166,14 @@ async function handleSubmit() {
             </h2>
 
             <UFormField
-              label="Department / Recipient"
+              :label="$t('dispatch.department') + ' / Recipient'"
               name="department"
               hint="Auto-suggested based on document type. You may override."
             >
               <USelect
                 v-model="form.department"
                 :items="departmentOptions"
-                placeholder="Select destination department"
+                :placeholder="$t('dispatch.assignDepartment')"
                 class="w-full"
               />
             </UFormField>
@@ -188,7 +189,7 @@ async function handleSubmit() {
           <!-- File attachment -->
           <div class="bg-surface rounded-xl border border-border-base p-6 space-y-3">
             <h2 class="text-sm font-semibold text-body border-b border-border-faint pb-3">
-              Attachments
+              {{ $t('document.attachments') }}
             </h2>
             <div class="border-2 border-dashed border-border-base rounded-lg p-8 flex flex-col items-center justify-center text-center hover:border-accent/50 hover:bg-accent/5 transition-colors cursor-pointer">
               <UIcon name="i-lucide-upload-cloud" class="h-10 w-10 text-icon-faint mb-3" />
@@ -220,7 +221,7 @@ async function handleSubmit() {
           variant="outline"
           :to="'/dispatch/inbound'"
         >
-          Cancel
+          {{ $t('common.cancel') }}
         </UButton>
       </div>
     </form>

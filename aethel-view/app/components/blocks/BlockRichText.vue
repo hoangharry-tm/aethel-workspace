@@ -44,7 +44,7 @@ function handleSave() {
           leading-icon="i-lucide-save"
           @click="handleSave"
         >
-          Save
+          {{ $t('common.save') }}
         </UButton>
       </div>
 

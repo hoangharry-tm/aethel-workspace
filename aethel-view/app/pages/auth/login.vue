@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'auth' })
 
+const { t } = useI18n()
 const { login, requestPasswordReset } = useAuth()
 const router = useRouter()
 
@@ -17,13 +18,13 @@ async function handleLogin() {
   } catch (e: unknown) {
     const status = (e as { statusCode?: number }).statusCode
     if (status === 401) {
-      error.value = 'Invalid email or password.'
+      error.value = t('errors.loginFailed')
     } else if (status === 423) {
       error.value = 'Account is temporarily locked due to too many failed attempts. Try again in 15 minutes.'
     } else if (status === 429) {
       error.value = 'Too many login attempts. Please wait before trying again.'
     } else {
-      error.value = 'An unexpected error occurred. Please try again.'
+      error.value = t('errors.serverError')
     }
   } finally {
     loading.value = false
@@ -50,14 +51,14 @@ async function handlePasswordReset() {
 <template>
   <div class="p-8">
     <div class="mb-6">
-      <h2 class="text-xl font-bold text-body">Sign in to Aethel Workspace</h2>
+      <h2 class="text-xl font-bold text-body">{{ $t('auth.loginTitle') }}</h2>
       <p class="text-sm text-muted mt-1">
-        Enter your credentials to access your workspace.
+        {{ $t('auth.loginSubtitle') }}
       </p>
     </div>
 
     <form v-if="!showReset" class="space-y-4" @submit.prevent="handleLogin">
-      <UFormField label="Email address" name="email">
+      <UFormField :label="$t('auth.email')" name="email">
         <UInput
           v-model="form.email"
           type="email"
@@ -69,7 +70,7 @@ async function handlePasswordReset() {
         />
       </UFormField>
 
-      <UFormField label="Password" name="password">
+      <UFormField :label="$t('auth.password')" name="password">
         <UInput
           v-model="form.password"
           type="password"
@@ -87,7 +88,7 @@ async function handlePasswordReset() {
           class="text-xs text-accent hover:underline"
           @click="showReset = true"
         >
-          Forgot password?
+          {{ $t('auth.forgotPassword') }}
         </button>
       </div>
 
@@ -108,7 +109,7 @@ async function handlePasswordReset() {
         :loading="loading"
         @click="handleLogin"
       >
-        Sign in
+        {{ $t('auth.login') }}
       </UButton>
     </form>
 
@@ -119,14 +120,14 @@ async function handlePasswordReset() {
         @click="showReset = false; resetSent = false; resetEmail = ''"
       >
         <UIcon name="i-lucide-arrow-left" class="h-4 w-4" />
-        Back to sign in
+        {{ $t('auth.backToLogin') }}
       </button>
 
       <div v-if="!resetSent" class="space-y-4">
         <p class="text-sm text-muted">
           Enter your email address and we'll send you a reset link if an account exists.
         </p>
-        <UFormField label="Email address" name="reset-email">
+        <UFormField :label="$t('auth.email')" name="reset-email">
           <UInput
             v-model="resetEmail"
             type="email"

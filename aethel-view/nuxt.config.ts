@@ -22,9 +22,20 @@ export default defineNuxtConfig({
     "@nuxt/scripts",
     "@nuxt/test-utils",
     "@nuxt/ui",
+    ["@nuxtjs/i18n", {
+      locales: [
+        { code: "en", name: "English", file: "en.json" },
+        { code: "vi", name: "Tiếng Việt", file: "vi.json" },
+      ],
+      defaultLocale: "en",
+      langDir: "locales/",
+      strategy: "no_prefix",
+      lazy: true,
+    }],
     "@nuxtjs/mcp-toolkit",
     "@oro.ad/nuxt-claude-devtools",
     "@pinia/nuxt",
   ],
+
 });
 

@@ -25,7 +25,7 @@ function timeAgo(timestamp: string): string {
     <div class="flex items-center justify-between gap-4 flex-wrap">
       <div>
         <h1 class="text-xl font-bold text-body">
-          Inbound Documents
+          {{ $t('dispatch.inboxTitle') }}
         </h1>
         <p class="text-sm text-muted mt-0.5">
           All incoming documents received at reception
@@ -37,7 +37,7 @@ function timeAgo(timestamp: string): string {
         variant="solid"
         leading-icon="i-lucide-plus"
       >
-        Log New Document
+        {{ $t('dispatch.newInbound') }}
       </UButton>
     </div>
 
@@ -48,25 +48,25 @@ function timeAgo(timestamp: string): string {
           <thead class="bg-subtle border-b border-border-base">
             <tr>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Tracking ID
+                {{ $t('dispatch.trackingNumber') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Subject
+                {{ $t('dispatch.subject') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden sm:table-cell">
-                Sender
+                {{ $t('dispatch.sender') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Priority
+                {{ $t('dispatch.priority') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                Status
+                {{ $t('common.status') }}
               </th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider hidden md:table-cell">
                 Received
               </th>
               <th class="px-4 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wider">
-                Actions
+                {{ $t('common.actions') }}
               </th>
             </tr>
           </thead>
@@ -105,7 +105,7 @@ function timeAgo(timestamp: string): string {
                   variant="outline"
                   size="xs"
                 >
-                  View
+                  {{ $t('common.view') }}
                 </UButton>
               </td>
             </tr>

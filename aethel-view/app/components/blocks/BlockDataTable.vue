@@ -12,6 +12,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { t } = useI18n()
 
 const sortKey = ref<string | null>(null)
 const sortDir = ref<'asc' | 'desc'>('asc')
@@ -96,7 +97,7 @@ const sortedRows = computed(() => {
             <td :colspan="columns.length" class="px-4 py-10 text-center">
               <div class="flex flex-col items-center gap-2 text-icon-disabled">
                 <UIcon name="i-lucide-inbox" class="h-8 w-8" />
-                <span class="text-sm">{{ emptyLabel ?? 'No data available' }}</span>
+                <span class="text-sm">{{ emptyLabel ?? t('common.noResults') }}</span>
               </div>
             </td>
           </tr>

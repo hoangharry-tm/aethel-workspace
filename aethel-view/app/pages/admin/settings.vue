@@ -79,7 +79,7 @@ const aliasExample = `schema:
     <!-- Header -->
     <div>
       <h1 class="text-xl font-bold text-body">
-        Settings
+        {{ $t('admin.settings') }}
       </h1>
       <p class="text-sm text-muted mt-0.5">
         System-wide configuration and preferences
@@ -90,14 +90,14 @@ const aliasExample = `schema:
     <div class="bg-surface rounded-xl border border-border-base overflow-hidden">
       <div class="px-4 py-3 border-b border-border-faint">
         <h2 class="text-sm font-semibold text-body">
-          Organization Profile
+          {{ $t('admin.orgProfile') }}
         </h2>
         <p class="text-xs text-muted mt-0.5">
           Basic details about your organization shown throughout the workspace.
         </p>
       </div>
       <div class="p-4 space-y-4">
-        <UFormField label="Organization Name" name="orgName" required>
+        <UFormField :label="$t('admin.orgName')" name="orgName" required>
           <UInput
             v-model="orgForm.name"
             placeholder="Aethel Demo Org"
@@ -106,7 +106,7 @@ const aliasExample = `schema:
         </UFormField>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <UFormField label="Timezone" name="timezone">
+          <UFormField :label="$t('admin.timezone')" name="timezone">
             <USelect
               v-model="orgForm.timezone"
               :items="timezoneOptions"
@@ -114,7 +114,7 @@ const aliasExample = `schema:
             />
           </UFormField>
 
-          <UFormField label="Locale" name="locale">
+          <UFormField :label="$t('admin.locale')" name="locale">
             <USelect
               v-model="orgForm.locale"
               :items="localeOptions"
@@ -139,7 +139,7 @@ const aliasExample = `schema:
             leading-icon="i-lucide-save"
             @click="saveOrgProfile"
           >
-            Save Profile
+            {{ $t('common.save') }}
           </UButton>
         </div>
       </div>
@@ -149,7 +149,7 @@ const aliasExample = `schema:
     <div class="bg-surface rounded-xl border border-border-base overflow-hidden">
       <div class="px-4 py-3 border-b border-border-faint">
         <h2 class="text-sm font-semibold text-body">
-          Feature Toggles
+          {{ $t('admin.featureToggles') }}
         </h2>
         <p class="text-xs text-muted mt-0.5">
           Enable or disable platform features. Changes take effect immediately.

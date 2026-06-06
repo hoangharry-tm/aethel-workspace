@@ -111,7 +111,7 @@ const roleBadgeColor: Record<string, 'primary' | 'success' | 'warning' | 'neutra
     <div class="flex items-center justify-between gap-4 flex-wrap">
       <div>
         <h1 class="text-xl font-bold text-body">
-          Navigation
+          {{ $t('admin.navigation') }}
         </h1>
         <p class="text-sm text-muted mt-0.5">
           Manage sidebar nav groups, item order, labels, and visibility
@@ -123,7 +123,7 @@ const roleBadgeColor: Record<string, 'primary' | 'success' | 'warning' | 'neutra
         leading-icon="i-lucide-save"
         @click="saveNavigation"
       >
-        Save Navigation
+        {{ $t('common.save') }} Navigation
       </UButton>
     </div>
 
@@ -236,7 +236,7 @@ const roleBadgeColor: Record<string, 'primary' | 'success' | 'warning' | 'neutra
           leading-icon="i-lucide-plus"
           @click="openAddModal(groupIdx)"
         >
-          Add Item
+          {{ $t('admin.addNavItem') }}
         </UButton>
       </div>
     </div>
@@ -247,7 +247,7 @@ const roleBadgeColor: Record<string, 'primary' | 'success' | 'warning' | 'neutra
     <template #content>
       <div class="p-6 space-y-4">
         <h3 class="text-base font-semibold text-body">
-          Add Nav Item
+          {{ $t('admin.addNavItem') }}
         </h3>
         <UFormField label="Label" name="label" required>
           <UInput v-model="newItemForm.label" placeholder="e.g. Reports" class="w-full" />
@@ -260,10 +260,10 @@ const roleBadgeColor: Record<string, 'primary' | 'success' | 'warning' | 'neutra
         </UFormField>
         <div class="flex gap-2 pt-2 border-t border-border-faint">
           <UButton color="primary" variant="solid" @click="addItem">
-            Add Item
+            {{ $t('common.add') }}
           </UButton>
           <UButton color="neutral" variant="outline" @click="showAddModal = false">
-            Cancel
+            {{ $t('common.cancel') }}
           </UButton>
         </div>
       </div>
