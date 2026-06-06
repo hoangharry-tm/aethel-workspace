@@ -671,9 +671,9 @@ queries:
   notifications:
     list_by_user:
       statement: |
-        SELECT id, user_id, title, body, type, is_read, related_dispatch_id, created_at
+        SELECT id, recipient_user_id AS user_id, title, body, type, is_read, dispatch_id AS related_dispatch_id, created_at
         FROM notifications
-        WHERE user_id = $2 AND organization_id = $1
+        WHERE recipient_user_id = $2 AND organization_id = $1
           AND ($3::boolean IS NULL OR is_read = NOT $3)
         ORDER BY created_at DESC
         LIMIT $4 OFFSET $5
@@ -689,7 +689,7 @@ queries:
     unread_count:
       statement: |
         SELECT COUNT(*) FROM notifications
-        WHERE user_id = $2 AND organization_id = $1 AND is_read = false
+        WHERE recipient_user_id = $2 AND organization_id = $1 AND is_read = false
       params:
         - "uuid"  # $1: organization_id
         - "uuid"  # $2: user_id
@@ -697,8 +697,8 @@ queries:
 
     mark_read:
       statement: |
-        UPDATE notifications SET is_read = true, updated_at = NOW()
-        WHERE id = $2 AND user_id = $3 AND organization_id = $1
+        UPDATE notifications SET is_read = true, read_at = NOW()
+        WHERE id = $2 AND recipient_user_id = $3 AND organization_id = $1
       params:
         - "uuid"  # $1: organization_id
         - "uuid"  # $2: notification_id
@@ -707,8 +707,8 @@ queries:
 
     mark_all_read:
       statement: |
-        UPDATE notifications SET is_read = true, updated_at = NOW()
-        WHERE user_id = $2 AND organization_id = $1 AND is_read = false
+        UPDATE notifications SET is_read = true, read_at = NOW()
+        WHERE recipient_user_id = $2 AND organization_id = $1 AND is_read = false
       params:
         - "uuid"  # $1: organization_id
         - "uuid"  # $2: user_id
@@ -776,7 +776,7 @@ queries:
           COUNT(d.id) FILTER (WHERE d.status_state = 'DELIVERED') AS dispatches_delivered,
           MAX(d.created_at) AS last_activity
         FROM users u
-        LEFT JOIN dispatches d ON d.created_by_user_id = u.id AND d.organization_id = $1
+        LEFT JOIN dispatches d ON d.submitted_by_user_id = u.id AND d.organization_id = $1
         WHERE u.organization_id = $1 AND u.is_active = true
         GROUP BY u.id, u.full_name, u.role
         ORDER BY last_activity DESC NULLS LAST

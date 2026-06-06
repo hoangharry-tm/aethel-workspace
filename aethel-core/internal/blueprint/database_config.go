@@ -8,6 +8,8 @@ type DatabaseConfig struct {
 	Partitioning           map[string]PartitionConfig   `yaml:"partitioning"`
 	Extensions             ExtensionConfig              `yaml:"extensions"`
 	Performance            PerformanceConfig            `yaml:"performance"`
+	Server                 ServerConfig                 `yaml:"server"`
+	Auth                   AuthConfig                   `yaml:"auth"`
 }
 
 type Metadata struct {
@@ -86,4 +88,63 @@ type PerformanceConfig struct {
 	StatementTimeoutMs           int `yaml:"statement_timeout_ms"`
 	IdleInTransactionTimeoutMs   int `yaml:"idle_in_transaction_timeout_ms"`
 	LockTimeoutMs                int `yaml:"lock_timeout_ms"`
+}
+
+// ServerConfig holds HTTP-level guardrails loaded from the server: blueprint section.
+// These are applied at startup by the Go backend middleware stack.
+type ServerConfig struct {
+	// RateLimitRPM is the global per-IP token bucket refill rate (requests per minute).
+	// Default (if not set in blueprint): 600.
+	RateLimitRPM int `yaml:"rate_limit_rpm"`
+	// RateLimitBurst is the maximum burst capacity above the steady refill rate.
+	// Default (if not set in blueprint): 100.
+	RateLimitBurst int `yaml:"rate_limit_burst"`
+	// BodyLimitBytes is the maximum accepted request body size in bytes.
+	// Default (if not set in blueprint): 1 MiB (1048576).
+	BodyLimitBytes int64 `yaml:"body_limit_bytes"`
+}
+
+// ServerDefaults returns safe production defaults for ServerConfig fields
+// that were not explicitly set in the blueprint (zero-value check).
+func (s ServerConfig) ServerDefaults() ServerConfig {
+	if s.RateLimitRPM <= 0 {
+		s.RateLimitRPM = 600
+	}
+	if s.RateLimitBurst <= 0 {
+		s.RateLimitBurst = 100
+	}
+	if s.BodyLimitBytes <= 0 {
+		s.BodyLimitBytes = 1048576 // 1 MiB
+	}
+	return s
+}
+
+// AuthConfig holds Argon2id cost parameters and token TTLs that IT administrators
+// can tune in server-database.yaml. All fields default to safe production values
+// when omitted or set to zero.
+type AuthConfig struct {
+	Argon2MemoryKiB     uint32 `yaml:"argon2_memory_kib"`
+	Argon2Iterations    uint32 `yaml:"argon2_iterations"`
+	Argon2Parallelism   uint8  `yaml:"argon2_parallelism"`
+	AccessTokenTTLMin   int    `yaml:"access_token_ttl_min"`
+	RefreshTokenTTLDays int    `yaml:"refresh_token_ttl_days"`
+}
+
+// SetDefaults fills zero-value fields with safe production defaults.
+func (a *AuthConfig) SetDefaults() {
+	if a.Argon2MemoryKiB == 0 {
+		a.Argon2MemoryKiB = 65536
+	}
+	if a.Argon2Iterations == 0 {
+		a.Argon2Iterations = 3
+	}
+	if a.Argon2Parallelism == 0 {
+		a.Argon2Parallelism = 4
+	}
+	if a.AccessTokenTTLMin == 0 {
+		a.AccessTokenTTLMin = 30
+	}
+	if a.RefreshTokenTTLDays == 0 {
+		a.RefreshTokenTTLDays = 30
+	}
 }

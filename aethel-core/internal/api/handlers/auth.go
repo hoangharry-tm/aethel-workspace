@@ -90,7 +90,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, loginResponse{
 		AccessToken: result.AccessToken,
 		TokenType:   "Bearer",
-		ExpiresIn:   int(15 * 60), // 15 minutes in seconds
+		ExpiresIn:   int(h.svc.AccessTokenTTL().Seconds()),
 		Role:        string(result.User.Role),
 	})
 }
@@ -132,7 +132,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"access_token": result.AccessToken,
-		"expires_in":   int(15 * 60),
+		"expires_in":   int(h.svc.AccessTokenTTL().Seconds()),
 	})
 }
 

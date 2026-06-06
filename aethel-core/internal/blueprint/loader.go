@@ -16,6 +16,7 @@ func LoadDatabaseConfig(path string) (*DatabaseConfig, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse blueprint %s: %w", path, err)
 	}
+	cfg.Auth.SetDefaults()
 	if err := validateDatabaseConfig(&cfg); err != nil {
 		return nil, fmt.Errorf("invalid blueprint %s: %w", path, err)
 	}

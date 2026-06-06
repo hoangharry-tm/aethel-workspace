@@ -15,6 +15,7 @@ import (
 	"aethel-core/internal/worker"
 	"bufio"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -76,7 +77,10 @@ var bootstrapAdminCmd = &cobra.Command{
 	RunE:  runBootstrapAdmin,
 }
 
-var migrateSteps int
+var (
+	migrateSteps       int
+	migrateCheckSyntax bool
+)
 
 func init() {
 	migrateDownCmd.Flags().IntVar(
@@ -84,6 +88,13 @@ func init() {
 		"steps",
 		1,
 		"number of migrations to roll back",
+	)
+
+	migrateValidateCmd.Flags().BoolVar(
+		&migrateCheckSyntax,
+		"check-syntax",
+		false,
+		"connect to the database and verify SQL syntax via EXPLAIN (requires a live DB connection)",
 	)
 
 	migrateCmd.AddCommand(
@@ -189,7 +200,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	)
 
 	// 8. Wire services.
-	authSvc := service.NewAuthService(userRepo, sessionRepo, pwResetRepo, auditWriter)
+	authSvc := service.NewAuthService(userRepo, sessionRepo, pwResetRepo, auditWriter, dbCfg.Auth)
 	dispatchSvc := service.NewDispatchService(dispatchRepo, eventRepo, routingRepo, minuteSheetRepo, auditWriter, db)
 	workflowSvc := service.NewWorkflowService(minuteSheetRepo, greenNoteRepo, auditWriter)
 	governanceSvc := service.NewGovernanceService(auditRepo)
@@ -235,7 +246,7 @@ func runBootstrapAdmin(_ *cobra.Command, _ []string) error {
 	ctx := context.Background()
 
 	// Load DB config.
-	_, envCfg, err := loadDatabaseBlueprint()
+	dbCfg, envCfg, err := loadDatabaseBlueprint()
 	if err != nil {
 		return err
 	}
@@ -265,6 +276,7 @@ func runBootstrapAdmin(_ *cobra.Command, _ []string) error {
 		sessionRepo,
 		pwResetRepo,
 		bootstrapAudit,
+		dbCfg.Auth,
 	)
 
 	bootstrapSvc := service.NewBootstrapService(
@@ -376,14 +388,21 @@ func runMigrateValidate(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	// Validate does not need a live DB — use a stub.
-	db, _ := database.Open(envCfg)
-	if db != nil {
-		defer db.Close()
+
+	// Template-only validation uses a nil DB (no connection required).
+	// SQL syntax checking requires a live DB connection and is opt-in via --check-syntax.
+	var syntaxDB *sql.DB
+	if migrateCheckSyntax {
+		syntaxDB, err = database.Open(envCfg)
+		if err != nil {
+			return fmt.Errorf("open database for syntax check: %w", err)
+		}
+		defer syntaxDB.Close()
+		slog.Info("--check-syntax enabled: SQL syntax will be validated via EXPLAIN")
 	}
-	// Create a minimal DB-less migrator just for template validation.
+
 	m := database.NewMigrator(nil, dbCfg, envCfg)
-	return m.Validate(context.Background())
+	return m.Validate(context.Background(), syntaxDB)
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

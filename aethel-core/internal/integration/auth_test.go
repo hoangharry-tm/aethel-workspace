@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"aethel-core/internal/app"
+	"aethel-core/internal/blueprint"
 	"aethel-core/internal/database/repos"
 	"aethel-core/internal/domain"
 	"aethel-core/internal/service"
@@ -34,7 +35,7 @@ func TestAuthFlow_LoginRefreshLogout(t *testing.T) {
 	pwResetRepo := repos.NewPasswordResetRepo(db)
 	auditNoop := &noopAuditRepo{}
 
-	authSvc := service.NewAuthService(userRepo, sessionRepo, pwResetRepo, auditNoop)
+	authSvc := service.NewAuthService(userRepo, sessionRepo, pwResetRepo, auditNoop, blueprint.AuthConfig{})
 
 	// Create the user by inserting directly via repo (uses the bootstrap path).
 	// We use RegisterUser from authSvc indirectly via CreateInitialAdmin pattern:

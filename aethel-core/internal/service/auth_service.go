@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -16,19 +15,23 @@ import (
 	"golang.org/x/crypto/argon2"
 
 	"aethel-core/internal/audit"
+	"aethel-core/internal/blueprint"
 	"aethel-core/internal/domain"
 )
 
 const (
-	defaultMemoryKiB     = 65536
-	defaultIterations    = 3
-	defaultParallelism   = 4
-	saltLength           = 16
-	keyLength            = 32
-	accessTokenDuration  = 30 * time.Minute
-	refreshTokenDuration = 7 * 24 * time.Hour
-	lockoutThreshold     = 5
-	lockoutDuration      = 15 * time.Minute
+	// defaultMemoryKiB, defaultIterations, defaultParallelism mirror the blueprint
+	// defaults and are used by tests via makeHash(). The live service reads these
+	// values from cfg (populated from the blueprint) so they are never read at
+	// runtime by AuthService methods.
+	defaultMemoryKiB   = 65536
+	defaultIterations  = 3
+	defaultParallelism = 4
+
+	saltLength       = 16
+	keyLength        = 32
+	lockoutThreshold = 5
+	lockoutDuration  = 15 * time.Minute
 )
 
 type AuthService struct {
@@ -36,6 +39,7 @@ type AuthService struct {
 	sessions domain.SessionRepository
 	pwReset  domain.PasswordResetRepository
 	audit    audit.Writer
+	cfg      blueprint.AuthConfig
 }
 
 func NewAuthService(
@@ -43,12 +47,15 @@ func NewAuthService(
 	sessions domain.SessionRepository,
 	pwReset domain.PasswordResetRepository,
 	auditWriter audit.Writer,
+	cfg blueprint.AuthConfig,
 ) *AuthService {
+	cfg.SetDefaults()
 	return &AuthService{
 		users:    users,
 		sessions: sessions,
 		pwReset:  pwReset,
 		audit:    auditWriter,
+		cfg:      cfg,
 	}
 }
 
@@ -99,7 +106,7 @@ func (s *AuthService) Login(ctx context.Context, orgID uuid.UUID, email, passwor
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
 
-	expiresAt := time.Now().Add(refreshTokenDuration)
+	expiresAt := time.Now().Add(s.refreshTokenTTL())
 	session := &domain.Session{
 		ID:               uuid.New(),
 		UserID:           user.ID,
@@ -148,7 +155,7 @@ func (s *AuthService) RefreshSession(ctx context.Context, rawRefreshToken string
 		ID:               uuid.New(),
 		UserID:           user.ID,
 		SessionTokenHash: newHash,
-		ExpiresAt:        time.Now().Add(refreshTokenDuration),
+		ExpiresAt:        time.Now().Add(s.refreshTokenTTL()),
 		ClientIPAddress:  session.ClientIPAddress,
 		UserAgent:        session.UserAgent,
 	}
@@ -235,16 +242,33 @@ func (s *AuthService) issueAccessToken(user *domain.User) (string, error) {
 	}
 
 	now := time.Now()
+	ttl := time.Duration(s.cfg.AccessTokenTTLMin) * time.Minute
 	claims := jwt.MapClaims{
 		"sub":  user.ID.String(),
 		"role": string(user.Role),
 		"iat":  now.Unix(),
-		"exp":  now.Add(accessTokenDuration).Unix(),
+		"exp":  now.Add(ttl).Unix(),
 		"jti":  uuid.New().String(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(secret))
+}
+
+// AccessTokenTTL returns the configured access token lifetime as a Duration.
+// Called by the HTTP handler to populate the expires_in response field.
+func (s *AuthService) AccessTokenTTL() time.Duration {
+	return time.Duration(s.cfg.AccessTokenTTLMin) * time.Minute
+}
+
+// accessTokenTTL is the internal alias used by issueAccessToken.
+func (s *AuthService) accessTokenTTL() time.Duration {
+	return s.AccessTokenTTL()
+}
+
+// refreshTokenTTL returns the configured refresh token / session lifetime as a Duration.
+func (s *AuthService) refreshTokenTTL() time.Duration {
+	return time.Duration(s.cfg.RefreshTokenTTLDays) * 24 * time.Hour
 }
 
 func (s *AuthService) hashPassword(password string) (string, error) {
@@ -253,9 +277,9 @@ func (s *AuthService) hashPassword(password string) (string, error) {
 		return "", fmt.Errorf("generate salt: %w", err)
 	}
 
-	memory := argon2Param("AETHEL_ARGON2_MEMORY_KIB", defaultMemoryKiB)
-	iterations := uint32(argon2Param("AETHEL_ARGON2_ITERATIONS", defaultIterations))
-	parallelism := uint8(argon2Param("AETHEL_ARGON2_PARALLELISM", defaultParallelism))
+	memory := s.cfg.Argon2MemoryKiB
+	iterations := s.cfg.Argon2Iterations
+	parallelism := s.cfg.Argon2Parallelism
 
 	hash := argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, keyLength)
 
@@ -345,11 +369,3 @@ func hashToken(token string) string {
 	return hex.EncodeToString(h[:])
 }
 
-func argon2Param(env string, def uint32) uint32 {
-	if v := os.Getenv(env); v != "" {
-		if n, err := strconv.ParseUint(v, 10, 32); err == nil {
-			return uint32(n)
-		}
-	}
-	return def
-}

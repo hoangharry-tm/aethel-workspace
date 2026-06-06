@@ -168,3 +168,33 @@ performance:
   idle_in_transaction_timeout_ms: 10000
   # Aborts statements waiting on a lock beyond this threshold.
   lock_timeout_ms: 5000
+
+# ════════════════════════════════════════════════════════════════════════════
+# SERVER GUARDRAILS
+# HTTP-level limits applied by the Go backend at startup.
+# ════════════════════════════════════════════════════════════════════════════
+server:
+  # Global per-IP rate limit (unauthenticated traffic).
+  rate_limit_rpm: 600
+  # Maximum burst tokens above the steady-state refill rate.
+  rate_limit_burst: 100
+  # Maximum accepted request body size in bytes (default: 1 MiB).
+  body_limit_bytes: 1048576
+
+# ════════════════════════════════════════════════════════════════════════════
+# AUTHENTICATION
+# Argon2id cost parameters and token TTLs. Increasing memory/iterations
+# raises the cost for attackers but also increases CPU usage per login.
+# OWASP minimum: memory=19456 KiB, iterations=2, parallelism=1.
+# ════════════════════════════════════════════════════════════════════════════
+auth:
+  # Argon2id memory cost in kibibytes (default: 64 MiB).
+  argon2_memory_kib: 65536
+  # Argon2id time cost — number of iterations (default: 3).
+  argon2_iterations: 3
+  # Argon2id degree of parallelism — number of threads (default: 4).
+  argon2_parallelism: 4
+  # Access token lifetime in minutes (default: 30).
+  access_token_ttl_min: 30
+  # Refresh token / session lifetime in days (default: 30).
+  refresh_token_ttl_days: 30

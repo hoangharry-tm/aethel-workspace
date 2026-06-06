@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
 
+	"aethel-core/internal/blueprint"
 	"aethel-core/internal/domain"
 )
 
@@ -196,7 +197,7 @@ func TestLogin_HappyPath(t *testing.T) {
 
 	userRepo := newMockUserRepo(user)
 	sessionRepo := newMockSessionRepo()
-	svc := NewAuthService(userRepo, sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{})
+	svc := NewAuthService(userRepo, sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{}, blueprint.AuthConfig{})
 
 	result, err := svc.Login(context.Background(), orgID, email, password, "127.0.0.1", "TestUA")
 	if err != nil {
@@ -230,7 +231,7 @@ func TestLogin_WrongPassword(t *testing.T) {
 
 	userRepo := newMockUserRepo(user)
 	sessionRepo := newMockSessionRepo()
-	svc := NewAuthService(userRepo, sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{})
+	svc := NewAuthService(userRepo, sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{}, blueprint.AuthConfig{})
 
 	_, err := svc.Login(context.Background(), orgID, email, "wrong-password", "127.0.0.1", "TestUA")
 	if err != domain.ErrUnauthorized {
@@ -264,7 +265,7 @@ func TestLogin_AccountLocked(t *testing.T) {
 
 	userRepo := newMockUserRepo(user)
 	sessionRepo := newMockSessionRepo()
-	svc := NewAuthService(userRepo, sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{})
+	svc := NewAuthService(userRepo, sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{}, blueprint.AuthConfig{})
 
 	// Should fail with ErrAccountLocked before even checking the password (Argon2id).
 	_, err := svc.Login(context.Background(), orgID, email, password, "127.0.0.1", "TestUA")
@@ -281,7 +282,7 @@ func TestLogin_UserNotFound(t *testing.T) {
 	orgID := uuid.New()
 	userRepo := newMockUserRepo() // no users
 	sessionRepo := newMockSessionRepo()
-	svc := NewAuthService(userRepo, sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{})
+	svc := NewAuthService(userRepo, sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{}, blueprint.AuthConfig{})
 
 	_, err := svc.Login(context.Background(), orgID, "nobody@example.com", "password", "127.0.0.1", "TestUA")
 	// Service must not reveal whether the email exists — must return ErrUnauthorized, not ErrNotFound.
@@ -305,7 +306,7 @@ func TestRefreshSession_ValidToken(t *testing.T) {
 
 	userRepo := newMockUserRepo(user)
 	sessionRepo := newMockSessionRepo()
-	svc := NewAuthService(userRepo, sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{})
+	svc := NewAuthService(userRepo, sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{}, blueprint.AuthConfig{})
 
 	// First, login to get a refresh token.
 	result, err := svc.Login(context.Background(), orgID, user.EmailAddress, "any", "127.0.0.1", "UA")
@@ -331,7 +332,7 @@ func TestRefreshSession_ExpiredToken(t *testing.T) {
 	sessionRepo := newMockSessionRepo()
 	// GetByTokenHash returns ErrNotFound for any hash → token unknown/expired.
 
-	svc := NewAuthService(newMockUserRepo(), sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{})
+	svc := NewAuthService(newMockUserRepo(), sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{}, blueprint.AuthConfig{})
 
 	_, err := svc.RefreshSession(context.Background(), "bogus-refresh-token")
 	if err != domain.ErrUnauthorized {
@@ -354,7 +355,7 @@ func TestLogout_RevokesSession(t *testing.T) {
 
 	userRepo := newMockUserRepo(user)
 	sessionRepo := newMockSessionRepo()
-	svc := NewAuthService(userRepo, sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{})
+	svc := NewAuthService(userRepo, sessionRepo, &mockPwResetRepo{}, &mockAuditRepo{}, blueprint.AuthConfig{})
 
 	// Login to establish a session.
 	result, err := svc.Login(context.Background(), orgID, user.EmailAddress, "password", "127.0.0.1", "UA")

@@ -28,6 +28,10 @@ import (
 	apiMW "aethel-core/internal/api/middleware"
 )
 
+// defaultBodyLimit is used when the server is constructed without an explicit
+// blueprint config (e.g. in unit tests). 1 MiB matches the blueprint default.
+const defaultBodyLimit int64 = 1 << 20
+
 func init() {
 	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
 		With().Timestamp().Logger()
@@ -97,19 +101,21 @@ func (s *Server) buildRouter(
 	// ── Global middleware stack (order matters) ───────────────────────────────
 	// 1. Recovery — catch panics before any other middleware
 	r.Use(middleware.Recoverer)
-	// 2. Security headers — set on every response including panic recoveries
+	// 2. Body size cap — reject oversized payloads before expensive processing
+	r.Use(apiMW.MaxBodySize(defaultBodyLimit))
+	// 3. Security headers — set on every response including panic recoveries
 	r.Use(apiMW.SecurityHeaders)
-	// 3. Request ID — for correlation in logs
+	// 4. Request ID — for correlation in logs
 	r.Use(middleware.RequestID)
-	// 4. Structured request logger
-	r.Use(zerologMiddleware)
-	// 5. Global rate limit — 600 RPM per IP, covers unauthenticated traffic
+	// 5. Structured request logger — reads request_id + user_id from context
+	r.Use(apiMW.StructuredLogger(zerolog.New(os.Stdout).With().Timestamp().Logger()))
+	// 6. Global rate limit — 600 RPM per IP, covers unauthenticated traffic
 	r.Use(apiMW.RateLimit)
-	// 6. CORS
+	// 7. CORS
 	r.Use(corsMiddleware)
-	// 7. JWT extraction — sets user/role on context, injects app.OrgID
+	// 8. JWT extraction — sets user/role on context, injects app.OrgID
 	r.Use(s.jwtMiddleware)
-	// 8. Per-user rate limit — 300 RPM per authenticated user (post-JWT)
+	// 9. Per-user rate limit — 300 RPM per authenticated user (post-JWT)
 	r.Use(apiMW.RateLimitAuthenticated(func(req *http.Request) string {
 		uid, _ := rbac.UserIDFromCtx(req.Context())
 		return uid
@@ -295,17 +301,3 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func zerologMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
-		next.ServeHTTP(ww, r)
-		log.Info().
-			Str("method", r.Method).
-			Str("path", r.URL.Path).
-			Int("status", ww.Status()).
-			Dur("latency", time.Since(start)).
-			Str("request_id", middleware.GetReqID(r.Context())).
-			Msg("request")
-	})
-}

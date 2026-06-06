@@ -178,7 +178,11 @@ func (m *Migrator) Status(ctx context.Context) error {
 	return nil
 }
 
-func (m *Migrator) Validate(ctx context.Context) error {
+// Validate renders all migration templates and checks for template errors.
+// If db is non-nil, it also performs a SQL syntax check for each .up.sql file by
+// wrapping every statement in BEGIN/EXPLAIN/ROLLBACK — this validates SQL syntax
+// without modifying the database. Pass a nil db to skip the syntax check.
+func (m *Migrator) Validate(ctx context.Context, db *sql.DB) error {
 	files, err := m.collectFiles("up")
 	if err != nil {
 		return err
@@ -190,10 +194,18 @@ func (m *Migrator) Validate(ctx context.Context) error {
 			return fmt.Errorf("read migration %s: %w", f, err)
 		}
 
-		if _, err := renderMigration(raw, m.ctx); err != nil {
+		rendered, err := renderMigration(raw, m.ctx)
+		if err != nil {
 			return fmt.Errorf("template error in %s: %w", f, err)
 		}
 		slog.Info("migration template valid", "file", f)
+
+		if db != nil {
+			if err := checkSQLSyntax(ctx, db, f, rendered); err != nil {
+				return err
+			}
+			slog.Info("migration syntax valid", "file", f)
+		}
 	}
 
 	// Validate down files as well.
@@ -212,6 +224,28 @@ func (m *Migrator) Validate(ctx context.Context) error {
 	}
 
 	slog.Info("all migration templates valid", "count", len(files))
+	return nil
+}
+
+// checkSQLSyntax wraps each SQL statement in the rendered migration inside a
+// BEGIN / EXPLAIN / ROLLBACK block so PostgreSQL validates the syntax without
+// executing any DDL. Returns a wrapped error that includes the migration filename
+// and the offending statement on failure.
+func checkSQLSyntax(ctx context.Context, db *sql.DB, filename, rendered string) error {
+	// Split on ";\n" to handle multi-statement migrations.  The trailing empty
+	// segment produced by a final semicolon is skipped via the blank-line check.
+	stmts := strings.Split(rendered, ";\n")
+	for _, raw := range stmts {
+		stmt := strings.TrimSpace(raw)
+		if stmt == "" {
+			continue
+		}
+		// Wrap in a transaction that is always rolled back, so no state is written.
+		explainSQL := "BEGIN; EXPLAIN " + stmt + "; ROLLBACK;"
+		if _, err := db.ExecContext(ctx, explainSQL); err != nil {
+			return fmt.Errorf("sql syntax error in %s: %w\nstatement: %s", filename, err, stmt)
+		}
+	}
 	return nil
 }
 
