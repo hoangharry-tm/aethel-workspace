@@ -1,29 +1,42 @@
-# Task 19 — README Landing Page
+# Task 19 — README Landing Page (v2 — Improvements Pass)
 
-**Purpose:** Design and write the project README from scratch as a premium, landing-page-quality document. The README is the project's front page — it must simultaneously impress a developer stumbling onto the repo AND convince an IT administrator that this software is worth deploying. No code changes. Only README.md and supporting SVG assets.
+**Purpose:** Improve the existing README with targeted additions: richer inline visualizations that help audiences understand the system without reading prose, plus three alternative layout variants so the author can compare and choose a direction.
 
-**Primary output:** `README.md` at the repo root
-**Secondary output:** `docs/assets/banner.svg` — the project wordmark
+**Baseline:** The current `README.md` (committed `d9808e6`) is the starting point — do not redesign it. Improve it. The overall structure, SVG banner, Mercedes-style aesthetic, and badge row are locked. Work within them.
 
-**Design direction:** Restrained luxury — think Mercedes-Benz annual report, not a SaaS startup landing page. Black and white. Clean geometry. No marketing superlatives ("best-in-class", "enterprise-grade", "battle-tested"). No fake social proof. The actual technical choices — Argon2id, SHA-256 hash chains, monthly-partitioned audit ledger — ARE the marketing. Let them speak.
+**Primary outputs:**
+- `README.md` — improved in-place (visualizations added, prose refined)
+- `docs/assets/banner.svg` — keep as-is unless Agent 3 finds a clear improvement
+- `README-option-a.md` — layout variant A (current design, polished)
+- `README-option-b.md` — layout variant B (technical-first, developer audience)
+- `README-option-c.md` — layout variant C (visual-first, product/admin audience)
+
+**Design direction:** Restrained luxury — Mercedes-Benz, not SaaS startup. Black and white. Geometry over decoration. Visualizations must earn their place: each one should convey something that prose or a table cannot. The three pillars, the middleware stack, the dispatch lifecycle, and the hash-chain mechanism are natural candidates. Do not add visualizations just to add them.
+
+**Visualization philosophy (agents must internalize this before designing):**
+- A good README visualization follows three design rules from Edward Tufte: maximize data-ink ratio, remove chartjunk, show the data. If a diagram does not reveal structure or relationships that text cannot, cut it.
+- GitHub natively renders Mermaid diagrams (`\`\`\`mermaid` code fences) — use them for flow, state machines, and sequence diagrams. No external image hosting needed.
+- SVG files committed to the repo render inline with `<img src="...svg">` — use for static structural diagrams that Mermaid cannot express elegantly (e.g., a hash chain visualization, a role permission matrix).
+- Tables in GitHub markdown render as visual grids — a well-designed table IS a visualization. Use them for the role-permission matrix and feature comparison.
+- Do NOT add pie charts, bar charts, or generic "stats graphics" — they add visual noise without information density.
 
 ---
 
 ## Execution Flow
 
 ```
-[Step 0]  Pre-flight → collect all project context into /tmp/t19-preflight.md
+[Step 0]  Pre-flight → /tmp/t19-preflight.md
                ↓
-[Parallel] Agent 1 — Brand Strategist        → /tmp/t19-agent-1.md  (voice, hierarchy, IA)
-           Agent 2 — Technical Content Writer → /tmp/t19-agent-2.md  (prose, diagram, features)
-           Agent 3 — Visual Asset Designer    → /tmp/t19-agent-3.md  + docs/assets/banner.svg
+[Parallel] Agent 1 — Visualization Designer  → /tmp/t19-agent-1.md + SVG files in docs/assets/
+           Agent 2 — Content Refiner         → /tmp/t19-agent-2.md (prose improvements + diagram upgrades)
+           Agent 3 — Layout Variant Designer → README-option-b.md + README-option-c.md
                ↓ all complete
-[Serial]   Agent 4 — Synthesis               → README.md (final assembly)
+[Serial]   Agent 4 — Synthesis               → README.md (improved) + README-option-a.md
                ↓
-[Serial]   Agent 5 — QA Reviewer             → quality pass + commit
+[Serial]   Agent 5 — QA Reviewer             → quality pass + commit + push
 ```
 
-Agents 1, 2, and 3 run fully in parallel. Each writes only to its assigned output. Agent 4 reads all three and assembles the final file. Agent 5 reviews and commits.
+Agents 1, 2, and 3 run fully in parallel. Each writes only to its assigned files. Agent 4 reads all three and assembles the improvements into the main README, and also produces option-a (the polished version of the current design).
 
 ---
 
@@ -33,497 +46,447 @@ Agents 1, 2, and 3 run fully in parallel. Each writes only to its assigned outpu
 REPO=/Users/hoangharry/mh_code/internships/Bravo/aethel-workspace
 cd "$REPO"
 
-echo "## Current README content" > /tmp/t19-preflight.md
+echo "## Current README (baseline to improve)" > /tmp/t19-preflight.md
 cat README.md >> /tmp/t19-preflight.md
 
-echo -e "\n## CLAUDE.md — project overview (first 120 lines)" >> /tmp/t19-preflight.md
-head -120 CLAUDE.md >> /tmp/t19-preflight.md
+echo -e "\n## CLAUDE.md key sections" >> /tmp/t19-preflight.md
+head -150 CLAUDE.md >> /tmp/t19-preflight.md
 
-echo -e "\n## API route count" >> /tmp/t19-preflight.md
-grep -c "operationId" docs/architecture/architecture-api-routes.md >> /tmp/t19-preflight.md || echo "N/A"
+echo -e "\n## Dispatch status enum values" >> /tmp/t19-preflight.md
+grep -n "dispatch_status\|PENDING\|UNDER_REVIEW\|IN_TRANSIT\|DELIVERED\|ESCALATED\|DISPATCHED\|REJECTED" \
+  aethel-core/internal/domain/dispatch.go 2>/dev/null | head -20 >> /tmp/t19-preflight.md
 
-echo -e "\n## Migration count" >> /tmp/t19-preflight.md
-find aethel-core/internal/database/migrations -name "*.up.sql" | wc -l >> /tmp/t19-preflight.md
+echo -e "\n## RBAC roles and permissions" >> /tmp/t19-preflight.md
+grep -n "role\|permission\|ADMIN\|RECEPTION\|USER\|SYS_ADMIN" \
+  aethel-core/internal/rbac/middleware.go 2>/dev/null | head -40 >> /tmp/t19-preflight.md
 
-echo -e "\n## Go module" >> /tmp/t19-preflight.md
-head -5 aethel-core/go.mod >> /tmp/t19-preflight.md
+echo -e "\n## Middleware stack order in server.go" >> /tmp/t19-preflight.md
+grep -n "r\.Use\|Use(" aethel-core/internal/api/server.go | head -20 >> /tmp/t19-preflight.md
 
-echo -e "\n## Frontend pages" >> /tmp/t19-preflight.md
-find aethel-view/app/pages -name "*.vue" | sort >> /tmp/t19-preflight.md
+echo -e "\n## Green note hash chain fields" >> /tmp/t19-preflight.md
+grep -n "hash\|chain\|previous\|sequence\|SHA" \
+  aethel-core/internal/domain/governance.go 2>/dev/null | head -20 >> /tmp/t19-preflight.md
 
-echo -e "\n## Tech stack (go.mod direct deps)" >> /tmp/t19-preflight.md
-grep -A 40 "^require (" aethel-core/go.mod | head -40 >> /tmp/t19-preflight.md
-
-echo -e "\n## Security architecture summary" >> /tmp/t19-preflight.md
-head -60 docs/architecture/architecture-security.md >> /tmp/t19-preflight.md
+echo -e "\n## Existing docs/assets files" >> /tmp/t19-preflight.md
+find docs/assets -type f 2>/dev/null | sort >> /tmp/t19-preflight.md
 
 echo -e "\n## Git HEAD" >> /tmp/t19-preflight.md
 git rev-parse --short HEAD >> /tmp/t19-preflight.md
 
-echo "Pre-flight complete."
+echo "Pre-flight complete. $(wc -l < /tmp/t19-preflight.md) lines written."
 ```
 
 ---
 
-## Agent 1 — Brand Strategist
+## Agent 1 — Visualization Designer
 
-**You are a senior brand strategist** who has written positioning copy for developer infrastructure products (HashiCorp Vault, Tailscale, PlanetScale). You know the difference between marketing copy that embarrasses engineers and copy that earns their trust.
+**You are a senior information designer** with expertise in developer documentation, data visualization, and GitHub README aesthetics. You've studied Edward Tufte's principles (maximize data-ink ratio, eliminate chartjunk, show the data), and you understand that a visualization in a README earns its place only if it reveals structure that prose and tables cannot.
 
-**Your output is NOT the README itself.** Your output is the strategic blueprint that Agents 2, 3, and 4 will use as their north star.
+**Your job:** Design and create SVG visualizations that augment the existing README. Do NOT change the existing content — add to it. You will produce 3 targeted SVG diagrams that address the three most visually underserved concepts in the current README.
 
-### Step 1: Read and absorb the project
+**Working directory:** `docs/assets/`
+
+### Step 1: Read the baseline and understand what already exists
 
 ```bash
 cat /tmp/t19-preflight.md
-cat /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/CLAUDE.md | head -80
-cat /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/docs/architecture/architecture-security.md | head -80
+cat /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/README.md
+ls /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/docs/assets/
 ```
 
-### Step 2: Define the two audiences and their questions
+The existing README already has: a Mermaid architecture diagram, a three-pillar HTML table, a tech stack badge table, collapsible feature deep-dives. Do not duplicate any of these.
 
-Think through: a developer who finds this repo on GitHub has three questions in the first 10 seconds:
-1. What does this do?
-2. Is this serious software or a hobby project?
-3. Is it relevant to me?
+### Step 2: Identify the three visualization opportunities
 
-An IT administrator evaluating Aethel for deployment has different questions:
-1. Can I trust this to handle sensitive institutional documents?
-2. How much operational overhead will this create?
-3. What are my obligations if something goes wrong?
+Apply this decision framework to each candidate concept:
+> "If a reader sees only this SVG — with no surrounding text — do they learn something meaningful about the system? Does the diagram reveal a relationship, sequence, or structure that a table or paragraph would require 5x the words to convey?"
 
-Your job is to define how the README answers both sets of questions, in what order, and with what tone.
+The three concepts that pass this test for Aethel:
 
-### Step 3: Define the messaging hierarchy
+**Visualization 1 — Dispatch Lifecycle State Machine** (`docs/assets/dispatch-lifecycle.svg`)
+The dispatch status transitions form a directed graph with clear fork points (routing, escalation, rejection). This is better as a state machine diagram than as a prose list. Create a horizontal SVG state machine:
+- Nodes: PENDING_ASSIGNMENT → UNDER_REVIEW → IN_TRANSIT → DELIVERED (happy path, left to right)
+- Branch: UNDER_REVIEW → ESCALATED (triggered by worker, upward branch)
+- Branch: UNDER_REVIEW → REJECTED (downward branch)
+- Branch: IN_TRANSIT → ATTEMPTED_DELIVERY (loop back node)
+- Visual style: rounded rectangle nodes with status label inside; arrow labels for transitions (e.g., "routing rule fires", "threshold exceeded", "admin action"); color-code nodes to match CLAUDE.md status colors: PENDING=slate, UNDER_REVIEW=indigo, IN_TRANSIT=sky, DELIVERED=emerald, ESCALATED=rose, REJECTED=red, ATTEMPTED=amber
+- Dimensions: `width="900" height="300"` — fits inline in GitHub on any screen
+- Background: white (`#ffffff`) — this diagram sits inline in the README body, not in the dark hero section
+- Font: same system stack as banner, but weight 400, size 13px
+- Arrows: use `<marker>` + `<path>` SVG primitives for proper arrowheads
 
-Write the following in your output:
+**Visualization 2 — Green Note Hash Chain** (`docs/assets/hash-chain.svg`)
+The cryptographic chain concept (each note hashes the previous) is the most novel technical feature of the project and the hardest to grasp from prose alone. Create a horizontal chain diagram showing 4 notes:
+- Each note is a card: top shows `Note #N` label, middle shows `content` snippet, bottom shows a shortened hash value (e.g., `a3f9...b72c`)
+- Connecting arrows: an arrow from each note's hash cell to the next note's "prev_hash" input — visually showing the chain dependency
+- Color scheme: monochrome — dark slate cards (`#1e293b`), white text, `#4f46e5` (indigo) for the hash values and connection arrows to draw the eye to the chain mechanism
+- Add a subtle "TAMPER DETECTED" annotation on note #3 showing a broken chain (red arrow, red hash text) to immediately communicate what chain violation looks like
+- Dimensions: `width="900" height="200"`
 
-**A. The single-sentence positioning statement**
-One sentence that captures what Aethel is, for whom, and why it's different from generic workflow tools. This is not a tagline. It is the statement every other piece of copy must be consistent with.
+**Visualization 3 — Role Permission Matrix** (`docs/assets/role-matrix.svg`)
+A compact matrix showing which actions each role can perform. This is far more scannable than a prose list. Rows = actions (View documents, Create dispatch, Approve green notes, Manage routing rules, View audit log, Verify audit chain, Manage users, Change branding). Columns = roles (USER, RECEPTION, ADMIN, SYS_ADMIN). Cells: ✓ (emerald filled circle), – (empty circle), or a lock icon for SYS_ADMIN-only rows.
+- Visual style: clean grid, alternating row backgrounds (`#f8fafc` / `#ffffff`), header row with dark background (`#1e293b`) and white text
+- Dimensions: `width="700" height="320"`
 
-**B. The three proof points**
-The three most technically credible things about this project — things that demonstrate engineering discipline, not just feature completeness. These must be true, specific, and non-trivial. "Built with Go" is not a proof point. "Refresh tokens rotate atomically using `BeginTx/Commit` to prevent session fixation" is.
+### Step 3: Create the three SVG files
 
-**C. The differentiation frame**
-One short paragraph that articulates what Aethel is NOT. What category of tool does it superficially resemble? Why is that comparison wrong? This helps the reader recalibrate their mental model quickly.
+Create each SVG file at its path in `docs/assets/`. Requirements for all three:
+- All SVG elements are self-contained: no `<use>` referencing external files, no `<image>` src, no external fonts
+- All text uses the system font stack: `font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"`
+- All SVGs are valid: open tag with `xmlns="http://www.w3.org/2000/svg"`, closed `</svg>`
+- No `style=` attributes that get stripped — use SVG presentation attributes (`fill`, `stroke`, `font-size`, etc.) directly on elements
 
-**D. The tone rules** (what Agent 2 must follow)
-- 3 things to ALWAYS do in the copy
-- 3 things to NEVER do in the copy
-- One sentence describing the voice: "This README sounds like ___"
+### Step 4: Write placement instructions
 
-**E. Information architecture** — ordered list of README sections
-Write the complete list of sections in the order they should appear, with a one-sentence rationale for each section's position. Be opinionated. The ordering is a design decision.
+For each SVG, write the exact markdown snippet (centered `<img>` tag) AND the exact location in the README where it should be inserted (by referencing the surrounding text from the current README). This makes Agent 4's job unambiguous.
 
-### Output format
-
-Write your full strategic brief to `/tmp/t19-agent-1.md`. No section headers other than those defined above. Prose where possible. Be concise — this is a brief, not an essay.
-
----
-
-## Agent 2 — Technical Content Writer
-
-**You are a senior technical writer** who has written documentation for Go projects, PostgreSQL-backed systems, and developer infrastructure tools. You write like an engineer, not a marketer. Your prose is precise, specific, and respects the reader's intelligence.
-
-**Your job:** Write every prose section of the README — the descriptions, the feature explanations, the architecture narrative, and the Mermaid diagram code. You do NOT write HTML layout, badges, or visual elements. Agent 3 handles those. You write the words and the diagram.
-
-### Step 1: Read context
-
-```bash
-cat /tmp/t19-preflight.md
-cat /tmp/t19-agent-1.md   # Read Agent 1's strategic brief — follow their tone rules
-cat /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/CLAUDE.md
-cat /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/docs/architecture/architecture-api-routes.md | head -60
-cat /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/docs/architecture/architecture-security.md | head -100
+Example format:
 ```
-
-### Step 2: Write content blocks
-
-Write each of the following content blocks exactly as they should appear in the final README. Label each block clearly so Agent 4 (Synthesis) knows where to place it.
-
----
-
-**BLOCK: TAGLINE**
-One sentence, centered beneath the banner. Not a slogan. A truthful, precise description of what Aethel is and for whom. Refer to Agent 1's positioning statement. Maximum 20 words.
-
----
-
-**BLOCK: OPENING**
-2–3 paragraphs. No bullet points. Flowing prose. Answer: what is the actual problem this solves, what happens without it, and what is the approach Aethel takes. Write as if the reader is a competent engineer who has seen dozens of SaaS workflow tools and is skeptical. Do not use the words: "seamless", "powerful", "robust", "scalable", "enterprise", "world-class", "cutting-edge", "next-generation", "revolutionize", "game-changing".
-
-The third paragraph must mention the self-hosted nature directly. Use a factual tone: "Aethel runs on your server. Your database. Your network perimeter." Not: "Aethel gives you full control over your data."
-
----
-
-**BLOCK: THREE PILLARS TABLE CONTENT**
-Three cells of text, one per pillar: DAK Diarization, Green Noting Canvas, RBAC Audit Ledger. Each cell: 3–5 sentences. Technical depth. Mention specific implementation details where they increase trust (e.g., name the hash function, mention the partition strategy, name the SQL extension). Do not write generic feature descriptions.
-
----
-
-**BLOCK: MERMAID ARCHITECTURE DIAGRAM**
-Write a `flowchart LR` Mermaid diagram showing the full system topology. Must include:
-- Browser (Nuxt 4 SSR)
-- Go backend with the 9-layer middleware stack named
-- Config cache with TTL
-- SSE Broker
-- Escalation Worker
-- PostgreSQL 16 with key characteristics
-- YAML blueprints (seed only path)
-- Data flow arrows with labels (JWT Bearer, text/event-stream, first-boot seed, etc.)
-
-Use subgraph blocks to group related nodes. Keep node labels concise but informative. The diagram should convey the architecture to someone who has never read the code.
-
----
-
-**BLOCK: TECHNICAL HIGHLIGHTS**
-Three callout box contents (these will be rendered as `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]` by Agent 4):
-
-1. *Runtime configuration* — explain how the config API works, the 5-minute cache, and why this matters operationally (no restarts, no rebuilds)
-2. *Cryptographic document chains* — explain the SHA-256 hash chain construction precisely: `hash(content ‖ sequence ‖ author ‖ previous_hash)`. Mention what this enables (tamper detection at the row level) and draw the analogy to Git's object model.
-3. *Argon2id* — explain why Argon2id over bcrypt (RFC 9106, winner of the Password Hashing Competition, memory-hard), what the defaults mean (`65536 KiB memory · 3 iterations · 4 threads`), and that the parameters are blueprint-configurable.
-
-Each callout: 3–5 sentences. Dense but readable.
-
----
-
-**BLOCK: QUICK START COMMENTARY**
-Two sentences maximum, placed before the code block. Must answer: "what do I need before I start" and "how long does this take."
-
----
-
-**BLOCK: FEATURE DEEP DIVES** (collapsible section content)
-Three collapsible sections, one per pillar. Each section: 200–350 words. Include:
-- How the feature works end-to-end
-- Any non-obvious design decisions (with the reasoning)
-- A code snippet or JSON example showing a real API response or database structure (use realistic fake data)
-- A brief mention of what happens when things go wrong (the error handling path)
-
----
-
-**BLOCK: SECURITY SUMMARY**
-2 sentences max. Links to `SECURITY.md` and `architecture-security.md`. Names 4–6 specific controls (no generic ones like "secure by design").
-
----
-
-**BLOCK: CONTRIBUTING NOTE**
-3 sentences. Mention the no-mock-DB integration test policy specifically — it is an unusual and credible constraint worth calling out.
-
----
-
-Write everything to `/tmp/t19-agent-2.md`. Label each block with its name in `## BLOCK: NAME` format so Agent 4 can extract them programmatically.
-
----
-
-## Agent 3 — Visual Asset Designer
-
-**You are a senior front-end designer** who specializes in high-quality GitHub READMEs and developer documentation aesthetics. You understand what GitHub's markdown renderer actually supports — no guessing, no CSS that gets stripped.
-
-**Your job:** Create the SVG banner, design the badge row, and write all HTML layout blocks. You do not write prose content — Agent 2 handles that.
-
-### Step 1: Read context
-
-```bash
-cat /tmp/t19-preflight.md
-cat /tmp/t19-agent-1.md   # Read the tone rules and IA — your visual choices must reinforce them
+PLACEMENT — dispatch-lifecycle.svg:
+Insert AFTER the line "```" that closes the Mermaid architecture diagram and BEFORE the "---" separator.
+Markdown: <div align="center"><img src="docs/assets/dispatch-lifecycle.svg" width="100%" alt="Dispatch lifecycle state machine"/></div>
 ```
-
-### Step 2: Create `docs/assets/banner.svg`
-
-```bash
-mkdir -p /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/docs/assets
-```
-
-Design a banner SVG at `docs/assets/banner.svg`. Requirements:
-
-- **Viewport:** `width="1280" height="220"` — renders full-width on GitHub
-- **Background:** `#0a0a0a` — near-black, not pure black (less harsh on dark mode)
-- **Wordmark:** "AETHEL" — system sans-serif (`-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif`), weight 200 (ultralight), font-size 72–80px, fill `#f0f0f0`, letter-spacing 25–30, centered at x=640
-- **Subtitle:** "WORKSPACE" — same font, weight 400, font-size 11–13px, fill `#484848`, letter-spacing 8–10, centered below the wordmark
-- **Accent rule:** A single 1px horizontal line (`#282828`) between the wordmark and subtitle
-- **Corner marks:** Four L-shaped corner accents (40px legs, 1.5px stroke, `#383838`). One at each corner of an inset rectangle. This is the luxury framing detail — do not skip it.
-- **No gradients, no drop shadows, no external fonts, no images.** The elegance comes from geometry and negative space, not decoration.
-
-After writing the file, verify it is valid SVG: check the file contains `<svg` and `</svg>`.
-
-### Step 3: Design the badge row
-
-Write the badge row as a markdown snippet that will be placed inside a `<div align="center">` by Agent 4. Use shields.io badges with `style=flat-square`.
-
-Badges to include (in this order):
-1. Go version — `https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square&logo=go&logoColor=white`
-2. Nuxt version — `https://img.shields.io/badge/Nuxt-4-00DC82?style=flat-square&logo=nuxt.js&logoColor=white`
-3. PostgreSQL version — `https://img.shields.io/badge/PostgreSQL-16-336791?style=flat-square&logo=postgresql&logoColor=white`
-4. License — `https://img.shields.io/badge/License-Apache_2.0-4f46e5?style=flat-square`
-5. OpenAPI — `https://img.shields.io/badge/OpenAPI-3.1_·_58_endpoints-6BA539?style=flat-square&logo=openapiinitiative&logoColor=white`
-6. Docker — `https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white`
-7. Self-hosted — `https://img.shields.io/badge/self--hosted-by_design-0a0a0a?style=flat-square`
-
-### Step 4: Design the stats bar
-
-Write a centered HTML table with 6 cells: pages, roles, API endpoints, migrations, domain pillars, p99 latency target. Each cell: bold number on top, `<sub>` label below. Use real numbers from the preflight context.
-
-### Step 5: Design the tech stack section
-
-Write a `<table>` with rows for: Frontend, Backend, Database, Auth, Infrastructure, Testing. Each row: left cell = bold layer name, right cell = shields.io badges for that layer's technologies.
-
-Badge colors should use the technology's official brand colors where available. Use the same `style=flat-square` throughout for visual consistency.
-
-### Step 6: Write the "placeholder" comment blocks
-
-At two specific locations in your output, write HTML comments marking where the user must insert their own assets:
-
-```html
-<!-- 📸 INSERT DEMO GIF HERE
-     Suggested: 15-30s recording of login → dispatch creation → green note → audit log verify
-     Free tools: Kap (Mac, getkap.co) · ScreenToGif (Windows) · Gifski (CLI, gif.ski)
-     Embed with: <img src="docs/assets/demo.gif" width="100%" alt="Aethel Workspace Demo"/>
--->
-```
-
-```html
-<!-- 📸 INSERT SCREENSHOTS HERE (optional)
-     Suggested: dashboard.png, document-detail.png, audit-log.png
-     Use Carbon (carbon.now.sh) for code screenshots with dark theme
-     Embed with: <img src="docs/assets/screenshot-dashboard.png" width="49%"/>
--->
-```
-
-Place the first placeholder after the badges in the hero section. Place the second inside the Quick Start section after the service URL table.
 
 ### Output
 
-Write all HTML/markdown blocks (badge row, stats bar, tech stack table, placeholder comments) to `/tmp/t19-agent-3.md`. Also create `docs/assets/banner.svg` directly. Label each block in `## BLOCK: NAME` format.
+Write all placement instructions to `/tmp/t19-agent-1.md`. Create the three SVG files directly in `docs/assets/`. Do not modify README.md — that is Agent 4's job.
+
+---
+
+## Agent 2 — Content Refiner
+
+**You are a senior technical editor** who improves existing documentation without rewriting it. Your instinct is surgical: one precise change beats three good changes.
+
+**Your job:** Read the current README and identify exactly 5–8 targeted improvements to existing content. Additions and refinements only — do not delete any section or restructure the layout.
+
+### Step 1: Read the current README and context
+
+```bash
+cat /tmp/t19-preflight.md
+cat /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/README.md
+cat /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/docs/architecture/architecture-security.md | head -80
+```
+
+### Step 2: Apply this evaluation rubric to the existing README
+
+For each section of the README, answer:
+1. **Information gap:** Is there a fact about this project that a reader would want to know here, that isn't here?
+2. **Credibility gap:** Is there a claim that would be more credible with a specific number, filename, or technical detail added?
+3. **Clarity gap:** Is there a sentence where a reader would have to re-read to understand what it means?
+
+Prioritize findings in this order: credibility gaps first (they directly affect whether an IT admin trusts the product), information gaps second, clarity gaps third. Stop at 8 findings.
+
+### Step 3: Write improvement patches
+
+For each finding, write a patch in this exact format:
+
+```
+PATCH #N — [section name]
+TYPE: addition / refinement / clarification
+FIND THIS TEXT: "[exact string from current README — enough context to locate it uniquely]"
+CHANGE TO: "[new text — include surrounding unchanged words for context]"
+RATIONALE: [one sentence: what does this improve and why does it matter to the reader]
+```
+
+**Boundaries:** Do not propose changes that:
+- Restructure section order
+- Replace the existing Mermaid diagram (it already exists and works)
+- Change the banner or badge row
+- Add new top-level sections (that would change the layout)
+- Touch the collapsible sections' structure (only their text content)
+
+**Ideas to evaluate** (not prescriptive — find what actually applies after reading):
+- Does the Quick Start section mention what happens on first login? (bootstrap-admin command)
+- Does the architecture diagram prose explain the config cache's role in SSR?
+- Do the feature deep-dives show a real JSON example of an API response?
+- Does the audit log verification section show what the broken-chain response looks like?
+- Does the tech stack section note which Go version and why (Go 1.26 is not yet released — verify)?
+- Are there any numbers in the prose that could be more specific (e.g., "many migrations" vs "42 migrations")?
+- Does the security section mention rate limiting and account lockout specifically?
+
+### Output
+
+Write all patches (exactly 5–8, no more) to `/tmp/t19-agent-2.md` in the patch format above.
+
+---
+
+## Agent 3 — Layout Variant Designer
+
+**You are a creative front-end designer** with experience writing GitHub READMEs for open source projects across different audience types. You know that layout is a design decision — what you put first, how dense the information is, and how much prose vs. visual content shapes who the document speaks to.
+
+**Your job:** Create two alternative README layouts as separate files. These are NOT replacements for the current README — they are options for the author to explore and choose from. The author will compare all three (current + your two) and pick a direction.
+
+**Working directory:** repo root
+
+### Step 1: Read the current README and understand its defaults
+
+```bash
+cat /tmp/t19-preflight.md
+cat /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/README.md
+```
+
+The current README (`README-option-a.md` — Agent 4 will save this copy) is a balanced design: equal weight on marketing narrative and technical depth, collapsible sections hiding the detail. Your two variants should offer meaningfully different trade-offs.
+
+### Step 2: Create `README-option-b.md` — Technical-First (Developer Audience)
+
+**Design philosophy:** "Show me the architecture, then convince me." This variant is for the developer who opens a README by immediately scrolling to the technical section. It front-loads the architecture diagram and code, and moves marketing prose to the bottom (or removes it). Dense, confident, respects the reader's time.
+
+Key design differences from the current README:
+- Lead with the architecture Mermaid diagram immediately after the hero + badges — before any prose
+- Replace the "opening" narrative paragraphs with a single-paragraph technical summary (`> [!NOTE]` callout)
+- Move the Three Pillars section AFTER the Architecture diagram, not before it
+- Expand the Quick Start section to be the second major section (after Architecture)
+- Add a "API at a Glance" section showing 5–6 key endpoints with their HTTP method, path, and one-line description in a code block or table — gives developers an instant sense of the API surface
+- Make Feature Reference the first detailed section (not hidden in collapsibles — show one pillar expanded, two collapsed)
+- Keep the tech stack table but remove the prose tech-stack section that just lists the same info
+- Footer: trim to just license + contributing links
+
+Use the same banner SVG (`docs/assets/banner.svg`) and same badges. Do NOT change those.
+
+Write this to `README-option-b.md` at the repo root. It must be complete and renderable.
+
+### Step 3: Create `README-option-c.md` — Visual-First (Product/Admin Audience)
+
+**Design philosophy:** "Show me what I'm getting, then tell me how it works." This variant is for the IT administrator or non-developer evaluating Aethel. More visual, more use-case driven, lighter on implementation details in the main flow.
+
+Key design differences from the current README:
+- After the banner + badges, add a visual "Use Case Summary" using an HTML table with 3 rows: one per role (ADMIN, RECEPTION, USER), showing what each role does in the system — like a product feature matrix but narrative
+- The "Three Pillars" section leads with a short use-case sentence ("A reception clerk receives an inbound letter from the Ministry of Finance...") before the technical description — grounding the abstract feature in a concrete workflow
+- Add a "Deployment Footprint" callout box listing: 2 Docker containers, 2 YAML config files, 1 PostgreSQL database, 0 external services — makes the operational story tangible
+- Move Argon2id / cryptographic highlights to the collapsible Feature Reference (they're credibility signals for developers, not the primary IT admin concern)
+- The Quick Start section includes a "What You'll See" subsection: 3 bullet points describing what the UI looks like after `make dev` succeeds
+- Add a "Designed for regulated environments" `[!IMPORTANT]` callout near the top: 3 bullet points referencing tamper-evident audit log, chain-of-custody tracking, RBAC with `sys_admin` gating — the compliance story
+- Footer: add a "Deployment checklist" link pointing to the IT customization guide
+
+Write this to `README-option-c.md` at the repo root. It must be complete and renderable.
+
+### Step 4: Write comparison guide
+
+At the top of your `/tmp/t19-agent-3.md` output, write a short comparison table:
+
+```markdown
+## Layout Comparison Guide
+
+| Dimension | Option A (current) | Option B (technical) | Option C (product/admin) |
+|---|---|---|---|
+| Primary audience | Mixed | Developer | IT administrator |
+| First impression | Elegant, balanced | Dense, technical | Approachable, visual |
+| Time to architecture | ~3 scrolls | Immediate | ~5 scrolls |
+| Marketing prose | Moderate | Minimal | Moderate |
+| Best for | GitHub repo homepage | Hacker News, dev communities | Internal evaluation, procurement |
+| Visual weight | Medium | Low | High |
+```
+
+Then add 2–3 sentences of honest opinion: which one would you choose for this project, and why?
+
+### Output
+
+Write comparison guide + opinion to `/tmp/t19-agent-3.md`. Create `README-option-b.md` and `README-option-c.md` directly at the repo root.
 
 ---
 
 ## Agent 4 — Synthesis
 
-**Run after Agents 1, 2, and 3 all complete.** You are a senior technical editor. Your job is to assemble the final README.md from the three agent outputs. You will do light copy editing to ensure the document reads as a single coherent voice — but do not rewrite any block substantially. Trust the agents.
+**Run after Agents 1, 2, and 3 all complete.** You are a senior technical editor. Apply the improvements from Agents 1 and 2 to the main README, and save the current version as option-a.
 
-### Step 1: Verify all inputs exist
+### Step 1: Verify all inputs
 
 ```bash
+REPO=/Users/hoangharry/mh_code/internships/Bravo/aethel-workspace
+cd "$REPO"
+
 for i in 1 2 3; do
-  [ -f "/tmp/t19-agent-$i.md" ] && echo "Agent $i: ✅ ($(wc -l < /tmp/t19-agent-$i.md) lines)" || echo "Agent $i: ❌ MISSING — stop and re-run the missing agent"
+  [ -f "/tmp/t19-agent-$i.md" ] && echo "Agent $i: ✅" || echo "Agent $i: ❌ MISSING"
 done
 
-[ -f "/Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/docs/assets/banner.svg" ] && echo "banner.svg: ✅" || echo "banner.svg: ❌ MISSING"
+for f in docs/assets/dispatch-lifecycle.svg docs/assets/hash-chain.svg docs/assets/role-matrix.svg; do
+  [ -f "$f" ] && echo "$f: ✅" || echo "$f: ❌ MISSING"
+done
+
+for f in README-option-b.md README-option-c.md; do
+  [ -f "$f" ] && echo "$f: ✅" || echo "$f: ❌ MISSING"
+done
 ```
 
-If any input is missing, stop. Do not proceed with partial inputs.
+Stop if any file is missing.
 
-### Step 2: Read all agent outputs in full
+### Step 2: Save option-a (current README, unchanged)
 
 ```bash
-cat /tmp/t19-agent-1.md
-cat /tmp/t19-agent-2.md
-cat /tmp/t19-agent-3.md
+cd /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace
+cp README.md README-option-a.md
 ```
 
-### Step 3: Assemble the README
+### Step 3: Apply Agent 1's SVG placements to README.md
 
-Write `README.md` at the repo root. The document must follow this exact structure, assembled from the labeled blocks in agent outputs:
+Read `/tmp/t19-agent-1.md` for the exact placement instructions. For each SVG, insert the `<img>` snippet at the specified location in `README.md`. Use `Edit` tool with the surrounding text as context to place precisely.
 
+After inserting all three SVGs, verify the placements did not break surrounding structure:
+```bash
+grep -c "<div align=" README.md
+grep -c "</div>" README.md
 ```
-1.  <div align="center"> [banner SVG img] </div>
-2.  <div align="center"> [BLOCK: TAGLINE from Agent 2] </div>
-3.  <div align="center"> [BLOCK: badge row from Agent 3] </div>
-4.  <div align="center"> [BLOCK: stats bar from Agent 3] </div>
-5.  [BLOCK: placeholder — demo GIF from Agent 3]
-6.  ---
-7.  [BLOCK: OPENING prose from Agent 2]
-8.  > [!IMPORTANT] — self-hosted callout (write this yourself: 2 sentences, factual tone)
-9.  ---
-10. ## Three Pillars  [HTML table using BLOCK: THREE PILLARS TABLE CONTENT from Agent 2]
-11. ---
-12. ## Architecture  [BLOCK: MERMAID ARCHITECTURE DIAGRAM from Agent 2]
-13. ---
-14. ## Technical Highlights
-    [> [!NOTE]] [BLOCK: runtime config callout from Agent 2]
-    [> [!TIP]] [BLOCK: cryptographic chains callout from Agent 2]
-    [> [!IMPORTANT]] [BLOCK: Argon2id callout from Agent 2]
-15. ---
-16. ## Quick Start
-    [BLOCK: QUICK START COMMENTARY from Agent 2]
-    [bash code block with 4 commands]
-    [service URL table]
-    [BLOCK: placeholder — screenshots from Agent 3]
-17. ---
-18. ## Tech Stack  [BLOCK: tech stack table from Agent 3]
-19. ---
-20. ## Feature Reference
-    [BLOCK: FEATURE DEEP DIVES from Agent 2 — three <details> sections]
-21. ---
-22. ## Configuration
-    <details> env vars table </details>
-    <details> blueprint files table </details>
-23. ---
-24. ## Command Reference
-    <details> full make target list </details>
-25. ---
-26. ## Project Structure
-    <details> annotated directory tree </details>
-27. ---
-28. ## Documentation  [table linking all docs in docs/]
-29. ---
-30. ## Security  [BLOCK: SECURITY SUMMARY from Agent 2]
-31. ## Contributing  [BLOCK: CONTRIBUTING NOTE from Agent 2]
-32. ## License  [one sentence + Apache 2.0 link]
-33. ---
-34. <div align="center"> <sub> footer links </sub> </div>
+Counts must be equal.
+
+### Step 4: Apply Agent 2's content patches to README.md
+
+Read `/tmp/t19-agent-2.md`. For each PATCH, apply it to `README.md` using exact string replacement on the FIND THIS TEXT. Do not apply any patch that would conflict with a prior SVG insertion. If a conflict exists, note it but skip the conflicting patch.
+
+### Step 5: Final self-review
+
+```bash
+cd /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace
+
+# Structural integrity
+echo "details open/close:" && grep -c "<details" README.md && grep -c "</details>" README.md
+echo "div open/close:" && grep -c "<div" README.md && grep -c "</div>" README.md
+
+# No forbidden words
+grep -in "seamless\|powerful\|robust\|enterprise\|world-class\|cutting-edge\|revolutionize" README.md | head -5 || echo "✅ No forbidden words"
+
+# SVG references valid
+grep "dispatch-lifecycle\|hash-chain\|role-matrix\|banner" README.md | head -10
 ```
 
-For sections 22–26, write the content yourself using the preflight data — these are factual sections (tables, code, trees) that do not require creative judgment. Use the existing README.md as your source of facts for env vars, commands, and project structure.
-
-**Critical rules for assembly:**
-- Do not add any section that is not in the structure above
-- Do not remove or reorder sections
-- Do not alter the prose blocks from Agent 2 except to fix obvious grammatical errors
-- Do not alter the visual elements from Agent 3 except to fix obviously broken HTML
-- The document must render correctly on GitHub — test every HTML block for proper tag closure
-
-### Step 4: Self-review before writing
-
-Before writing the file, answer these questions to yourself:
-- Does the tagline work without the banner for context? (It must — some readers see plain text)
-- Is there any claim in the opening that is not verifiable from the codebase?
-- Does the Mermaid diagram close all subgraph blocks?
-- Do all `<details>` tags have matching `</details>`?
-- Is every badge URL pointing to a valid shields.io endpoint?
-
-If you find issues, fix them before writing.
-
-### Step 5: Write the file
-
-Write the complete, final README.md to `/Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/README.md`.
+Fix any structural issues found. Do not change content.
 
 ### Output
 
 Write to `/tmp/t19-agent-4.md`:
-
 ```markdown
 ## Agent 4 — Synthesis
-_Assembled at: [timestamp]_
+_Completed at: [timestamp]_
 
-### Inputs used
-- Agent 1 (Brand): ✅/❌
-- Agent 2 (Content): ✅/❌
-- Agent 3 (Visual): ✅/❌
-
-### Sections assembled: N/34
-### Lines in final README.md: N
-### Known gaps (user must fill): [list placeholder locations]
+### SVG placements applied: N/3
+### Content patches applied: N/N (list any skipped + reason)
+### README.md integrity: ✅/❌
+### README-option-a.md saved: ✅/❌
 ```
 
 ---
 
-## Agent 5 — QA Reviewer + Commit
+## Agent 5 — QA Reviewer + Commit + Push
 
-**Run after Agent 4 completes.** You are a meticulous technical editor. Read the assembled README.md and apply a structured quality pass before committing.
+**Run after Agent 4 completes.**
 
-### Step 1: Read the assembled README
+### Step 1: Full read of all output files
 
 ```bash
-cat /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/README.md
-wc -l /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/README.md
+REPO=/Users/hoangharry/mh_code/internships/Bravo/aethel-workspace
+wc -l "$REPO"/README.md "$REPO"/README-option-a.md "$REPO"/README-option-b.md "$REPO"/README-option-c.md
+for f in dispatch-lifecycle.svg hash-chain.svg role-matrix.svg banner.svg; do
+  head -1 "$REPO/docs/assets/$f" | grep -q "<svg" && echo "$f: valid SVG ✅" || echo "$f: ❌ invalid"
+done
 ```
 
-### Step 2: Apply the QA checklist
+### Step 2: Verify all three SVG files render correctly
 
-Run each check. Note failures. Fix them before committing.
+Each SVG must:
+- Open with `<svg` and close with `</svg>`
+- Contain no `<image src=` external references
+- Contain no `<style>` blocks (use presentation attributes)
+- Be ≤ 30KB (GitHub has display limits for large inline SVGs)
 
-**Structural checks:**
 ```bash
-cd /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace
-
-# Every <details> must have a matching </details>
-echo "=== details open ===" && grep -c "<details" README.md
-echo "=== details close ===" && grep -c "</details>" README.md
-
-# Every div must close
-echo "=== div open ===" && grep -c "<div" README.md
-echo "=== div close ===" && grep -c "</div>" README.md
-
-# SVG banner is referenced correctly
-grep "docs/assets/banner.svg" README.md && echo "Banner: ✅" || echo "Banner: ❌ MISSING"
-
-# Mermaid block is present
-grep -c '```mermaid' README.md && echo "Mermaid: ✅" || echo "Mermaid: ❌"
-
-# No external image URLs (only relative paths allowed)
-grep -oP 'src="https?://[^"]*"' README.md | grep -v "shields.io" | head -5 && echo "WARNING: non-shield external images" || echo "External images: ✅"
+for f in dispatch-lifecycle.svg hash-chain.svg role-matrix.svg; do
+  SIZE=$(wc -c < /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/docs/assets/$f)
+  echo "$f: ${SIZE} bytes"
+done
 ```
 
-**Content checks (manual):**
-- Does the README contain any of these forbidden words? (`grep -in "seamless\|powerful\|robust\|scalable\|enterprise\|world-class\|cutting-edge\|next-generation\|revolutionize\|game-changing" README.md`)
-- Is the tagline ≤ 20 words?
-- Does the architecture diagram close all subgraph blocks?
-- Do the Quick Start commands match the actual Makefile targets?
+### Step 3: Verify option-b and option-c are complete
 
-**Visual checks:**
+Each variant README must contain:
+- The banner `<img>` reference
+- At least one Mermaid code block
+- At least one `> [!` callout block
+- A Quick Start section with bash code block
+
 ```bash
-# Banner SVG is valid
-head -3 docs/assets/banner.svg | grep -c "<svg" && echo "SVG valid: ✅" || echo "SVG invalid: ❌"
-tail -3 docs/assets/banner.svg | grep -c "</svg>" && echo "SVG closed: ✅" || echo "SVG unclosed: ❌"
+for opt in b c; do
+  f="/Users/hoangharry/mh_code/internships/Bravo/aethel-workspace/README-option-$opt.md"
+  echo "=== option-$opt ==="
+  grep -c "banner.svg" "$f" && echo "banner: ✅" || echo "banner: ❌"
+  grep -c '```mermaid' "$f" && echo "mermaid: ✅" || echo "mermaid: ❌"
+  grep -c '> \[!' "$f" && echo "callouts: ✅" || echo "callouts: ❌"
+  grep -c '```bash' "$f" && echo "bash blocks: ✅" || echo "bash blocks: ❌"
+done
 ```
 
-### Step 3: Fix any failures
-
-Fix directly in `README.md` and `docs/assets/banner.svg`. Do not make content changes — only fix broken structure.
-
-### Step 4: Commit
+### Step 4: Commit and push
 
 ```bash
 cd /Users/hoangharry/mh_code/internships/Bravo/aethel-workspace
-git add README.md docs/assets/
+git add README.md README-option-a.md README-option-b.md README-option-c.md docs/assets/
 git commit -m "$(cat <<'EOF'
-docs(readme): redesign as premium landing-page — Mercedes-style black/white
+docs(readme): add visualizations + content refinements + 3 layout variants
 
-- SVG wordmark banner: black bg, ultralight sans-serif, corner accent marks
-- Hero: badge row (Go 1.26, Nuxt 4, PostgreSQL 16, OpenAPI 3.1, Docker, Apache 2.0)
-- Stats bar: 17 pages · 58 endpoints · 42 migrations · 3 domain pillars
-- Three pillars: technical-depth HTML table (not marketing copy)
-- Architecture: Mermaid flowchart showing full system topology
-- Technical highlights: 3 GitHub callout boxes (runtime config, hash chain, Argon2id)
-- Feature reference: 3 collapsible deep-dive sections (one per pillar)
-- Placeholders for demo GIF and screenshots (user-provided)
+Visualizations (new SVG assets):
+- docs/assets/dispatch-lifecycle.svg: state machine diagram with color-coded status nodes
+- docs/assets/hash-chain.svg: cryptographic chain diagram with tamper-detection annotation
+- docs/assets/role-matrix.svg: RBAC permission matrix (4 roles × 8 actions)
+
+Content improvements:
+- [N targeted patches from Agent 2 — update this list from /tmp/t19-agent-2.md]
+
+Layout variants for author review:
+- README-option-a.md: current design (baseline, unchanged)
+- README-option-b.md: technical-first (developer audience, architecture leads)
+- README-option-c.md: visual-first (IT admin/product audience, use-case driven)
 
 Co-Authored-By: Claude Code Task 19 <noreply@anthropic.com>
 EOF
 )"
-echo "Committed: $(git rev-parse --short HEAD)"
+git push origin dev
+echo "Pushed: $(git rev-parse --short HEAD)"
 ```
 
 ---
 
 ## Definition of Done
 
-- [ ] `docs/assets/banner.svg` exists and is valid SVG (contains `<svg` and `</svg>`)
-- [ ] `README.md` references `docs/assets/banner.svg` in the hero `<img>`
-- [ ] `README.md` contains a Mermaid architecture diagram
-- [ ] Badge row contains ≥ 6 shields.io badges
-- [ ] Stats bar HTML table has 6 cells with real numbers
-- [ ] Three pillars section uses an HTML table
-- [ ] Three `<details>` collapsible sections for feature deep-dives exist
-- [ ] No forbidden marketing words in any prose section
-- [ ] All `<details>` tags matched (open count = close count)
-- [ ] All `<div>` tags matched (open count = close count)
-- [ ] Banner SVG uses corner accent marks (the luxury framing detail)
-- [ ] Two placeholder comment blocks exist (demo GIF + screenshots)
-- [ ] Quick Start section has ≤ 4 commands and a service URL table
-- [ ] Changes committed to `dev` branch
+- [ ] `docs/assets/dispatch-lifecycle.svg` — valid SVG, dispatch state machine with colored nodes
+- [ ] `docs/assets/hash-chain.svg` — valid SVG, 4-note chain with tamper annotation
+- [ ] `docs/assets/role-matrix.svg` — valid SVG, 4-role × 8-action permission grid
+- [ ] All three SVGs are ≤ 30KB
+- [ ] All three SVGs inserted into `README.md` at correct locations
+- [ ] 5–8 targeted content patches applied to `README.md`
+- [ ] `README.md` passes structural integrity check (`<div>` and `<details>` open=close counts)
+- [ ] No forbidden marketing words in `README.md`
+- [ ] `README-option-a.md` — copy of current README (before improvements)
+- [ ] `README-option-b.md` — technical-first variant, complete and renderable
+- [ ] `README-option-c.md` — visual-first variant, complete and renderable
+- [ ] All option files contain: banner, Mermaid diagram, callout boxes, Quick Start
+- [ ] Agent 3's comparison table written to `/tmp/t19-agent-3.md`
+- [ ] All changes committed and pushed to `dev` branch
 
 ---
 
 ## What the User Must Do After Running This Task
 
-These assets require a running app and cannot be automated:
+**Review the three options:**
+```bash
+# On GitHub — push and compare the three README files side by side
+# Or locally with any Markdown preview tool (VS Code, Typora, Marked 2)
+open README-option-a.md  # baseline
+open README-option-b.md  # technical-first
+open README-option-c.md  # visual-first
+```
+
+Read `/tmp/t19-agent-3.md` for the comparison table and Agent 3's honest recommendation.
+
+**Pick one as the final README.md:**
+```bash
+cp README-option-[a/b/c].md README.md
+git add README.md && git commit -m "docs(readme): adopt option-[a/b/c] as canonical"
+git push origin dev
+```
+
+**Add user-provided assets** (requires running app — cannot be automated):
 
 | Asset | Tool (free) | Where to put it |
 |---|---|---|
-| Demo GIF (15–30s: login → dispatch → green note → audit verify) | **Kap** (Mac, getkap.co) · **ScreenToGif** (Windows) | `docs/assets/demo.gif` |
-| Screenshots (dashboard, doc detail, audit log) | Browser screenshot · **Carbon** (carbon.now.sh) | `docs/assets/screenshot-*.png` |
-| Custom logo mark (optional — current text wordmark is intentional) | **Figma** (already installed) | Replace `docs/assets/banner.svg` |
-| Live CI badges (once repo is public on GitHub) | shields.io dynamic badge URLs | Replace static badges in hero |
-| Live demo URL (once staging is deployed) | Any host | Add badge to hero section |
-
-After adding assets, uncomment or replace the `<!-- INSERT ... -->` placeholder blocks in the README.
+| Demo GIF (15–30s: login → dispatch → audit verify) | **Kap** (Mac) · **ScreenToGif** (Windows) | `docs/assets/demo.gif` |
+| Screenshots | Browser · **Carbon** (carbon.now.sh) | `docs/assets/screenshot-*.png` |
+| Custom logo mark (optional) | **Figma** (already installed) | Replace `docs/assets/banner.svg` |
+| Live CI badges (once repo is public) | shields.io dynamic URLs | Replace static version badges |
