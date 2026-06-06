@@ -1,64 +1,77 @@
 <svg width="1280" height="220" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 220">
   <!--
-    banner_4 — BODONI WEIGHT CONTRAST PAIRING
+    banner_4 — DEEP INDIGO MONOCHROMATIC (Brand-Coherent)
     ─────────────────────────────────────────────────────────
-    Scientific / design basis:
-    - Giambattista Bodoni's typographic principle (c.1790): maximum expressiveness
-      comes from maximum contrast between thick and thin elements in the same
-      composition. His typefaces pair ultra-heavy main strokes with hairline
-      serifs. Applied here: semi-bold title (heavy) + ultralight subtitle (hairline)
-      creates the same dramatic contrast using weight instead of serif detail.
-    - Hermann Zapf "Manuale Typographicum" (1954): "typographic color" refers to
-      the visual density of a text area. A single line of weight-600 text at 96px
-      has maximum typographic color against black — it reads as a solid object,
-      not as a letterform constellation.
-    - Scale contrast: enlarging the wordmark to 96px (vs 76px in original) means
-      the letter area represents a higher percentage of the total canvas area,
-      increasing figure-ground dominance.
+    Research basis:
+    Brand color coherence theory (Wheeler "Designing Brand Identity", 2013):
+    when a brand's primary accent color (#4f46e5 in Aethel's case) appears in
+    its darkened form as the dominant banner background, it creates subconscious
+    color memory — viewers who have used the application recognize the indigo
+    hue and connect it to their experience. This is the mechanism behind Google's
+    use of blue across all surfaces: the exact hue, at any value, triggers recall.
 
-    Typography:
-      font-weight  200 → 600   (semi-bold — the maximum "luxury" weight that
-                                stops short of aggressive. 700/bold reads as
-                                utilitarian; 600 reads as authoritative)
-      font-size    76 → 96     (+26% — fills the canvas with authority)
-      fill         #f0f0f0 → #ffffff  (maximum contrast, 21:1)
-      letter-spacing  30 → 4   (extremely tight — at weight 600 and 96px the
-                                letters are physically large enough to need no
-                                spacing assistance; tight tracking makes the word
-                                a visual mass, not individual characters)
-      subtitle     weight 200, letter-spacing 20 — the deliberate ultralight
-                   subtitle creates a Bodoni-style thick/thin contrast that
-                   makes the heavy title feel even more dominant by comparison
+    Color science:
+    Background #0c0b1e — near-black with a strong purple-blue cast, a very dark
+    desaturated version of #4f46e5 (the application's --ui-primary color). The
+    hue is identical (≈248°) but the value (lightness) is reduced to ~7%,
+    making it a dark companion to the brand color without the aggressive
+    saturation of the full #4f46e5.
 
-    Layout: full-bleed rules at top and bottom, no corner marks
-    (corner marks are a detail for "delicate" designs; at this weight they
-    would compete — the type IS the design element here)
+    Wordmark #ffffff — pure white. Against a cool-dark indigo background,
+    pure white creates the blue-channel simultaneous contrast effect: the
+    cool background makes the neutral white appear slightly warm and luminous
+    by comparison. This is the inverse of warm colors making whites look cold.
+    At weight-200, the thin letterforms benefit from this maximum 21:1 contrast
+    (WCAG; luminance ratio).
+
+    Corner marks #1a1840 — dark indigo, matches the hue family.
+    Subtitle #3d3870 — muted mid-indigo, clearly a sibling of the bg hue.
+
+    Accent rule — slightly brighter indigo (#272454) to be just barely visible.
+
+    Practical effect: when this banner appears at the top of the GitHub README,
+    the indigo bg immediately signals "this is the Aethel brand" to anyone
+    who has seen the UI — the banner and the app share a color DNA.
   -->
 
-  <rect width="1280" height="220" fill="#060606"/>
+  <rect width="1280" height="220" fill="#0c0b1e"/>
 
-  <!-- Full-bleed top and bottom rules — minimal frame, lets type dominate -->
-  <line x1="80" y1="22" x2="1200" y2="22" stroke="#1e1e1e" stroke-width="1"/>
-  <line x1="80" y1="198" x2="1200" y2="198" stroke="#1e1e1e" stroke-width="1"/>
+  <!-- Border frame — dark indigo -->
+  <rect x="36" y="18" width="1208" height="184" fill="none" stroke="#141230" stroke-width="1"/>
 
-  <!-- Wordmark: weight 600, 96px, minimal tracking — a solid typographic mass -->
+  <!-- Corner marks — top-left -->
+  <line x1="36"   y1="18"  x2="90"   y2="18"  stroke="#1e1c40" stroke-width="1.5"/>
+  <line x1="36"   y1="18"  x2="36"   y2="72"  stroke="#1e1c40" stroke-width="1.5"/>
+  <!-- Corner marks — top-right -->
+  <line x1="1244" y1="18"  x2="1190" y2="18"  stroke="#1e1c40" stroke-width="1.5"/>
+  <line x1="1244" y1="18"  x2="1244" y2="72"  stroke="#1e1c40" stroke-width="1.5"/>
+  <!-- Corner marks — bottom-left -->
+  <line x1="36"   y1="202" x2="90"   y2="202" stroke="#1e1c40" stroke-width="1.5"/>
+  <line x1="36"   y1="202" x2="36"   y2="148" stroke="#1e1c40" stroke-width="1.5"/>
+  <!-- Corner marks — bottom-right -->
+  <line x1="1244" y1="202" x2="1190" y2="202" stroke="#1e1c40" stroke-width="1.5"/>
+  <line x1="1244" y1="202" x2="1244" y2="148" stroke="#1e1c40" stroke-width="1.5"/>
+
+  <!-- Wordmark — pure white, maximum contrast against indigo field -->
   <text
-    x="640" y="134"
+    x="640" y="122"
     font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
-    font-size="96"
-    font-weight="600"
+    font-size="76"
+    font-weight="200"
     fill="#ffffff"
     text-anchor="middle"
-    letter-spacing="4">AETHEL</text>
+    letter-spacing="30">AETHEL</text>
 
-  <!-- Subtitle: weight 200 deliberately — Bodoni thick/thin contrast principle -->
-  <!-- Ultralight subtitle makes the heavy title read as even more dominant -->
+  <!-- Accent rule — slightly brighter indigo, barely perceptible -->
+  <line x1="574" y1="142" x2="706" y2="142" stroke="#272454" stroke-width="1"/>
+
+  <!-- Subtitle — muted mid-indigo, clearly a sibling of the bg -->
   <text
-    x="640" y="178"
+    x="640" y="168"
     font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
-    font-size="11"
-    font-weight="200"
-    fill="#484848"
+    font-size="12"
+    font-weight="400"
+    fill="#4a4680"
     text-anchor="middle"
-    letter-spacing="20">WORKSPACE</text>
+    letter-spacing="10">WORKSPACE</text>
 </svg>

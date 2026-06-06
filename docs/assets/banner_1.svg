@@ -1,60 +1,69 @@
 <svg width="1280" height="220" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 220">
   <!--
-    banner_1 — STROKE WEIGHT FIX
+    banner_1 — DEEP NAVY MONOCHROMATIC
     ─────────────────────────────────────────────────────────
-    Scientific basis: Paterson & Tinker (1940) — stroke-to-x-height ratio is the
-    primary determinant of display type legibility. At font-weight 200, the
-    stroke width is ≈6% of x-height — below the 10–12% minimum they identify for
-    confident recognition on high-contrast backgrounds.
+    Research basis:
+    Labrecque & Milne (2012) "Exciting red and competent blue" — navy blue
+    consistently produces the highest brand perception scores for "trust",
+    "competence", and "authority" across professional software contexts.
+    IBM's 1972 Paul Rand identity established the premium-tech dark-navy
+    archetype; Stripe, Linear, and Notion all use dark navy as their canonical
+    "serious software" signal.
 
-    Changes from baseline:
-      font-weight  200 → 300   (+50% stroke width, still "light" aesthetic)
-      fill         #f0f0f0 → #ffffff  (contrast ratio 18.1:1 → 21:1; Weber's Law)
-      letter-spacing  30 → 22  (Gestalt proximity: tighter tracking restores word
-                                unity lost by thin strokes; luxury feel preserved)
-      subtitle fill  #484848 → #767676  (meets WCAG AA 4.5:1 for large text)
+    Color science:
+    Background #0a0e1f — near-black with a definite blue cast (hue ≈ 228°).
+    The blue undertone creates chromatic contrast with the cool-white wordmark
+    that pure black (#0a0a0a) cannot: same lightness, different hue = the
+    Helmholtz-Kohlrausch effect causes the white text to appear MORE luminous
+    against the blue field than against a neutral-gray field of equal value.
+    This directly addresses the "blending" problem without changing weight.
 
-    All other elements are unchanged — this isolates the weight + color variable.
+    Wordmark #e8edf8 — near-white with faint blue cast (harmonizes with bg hue;
+    Albers "Interaction of Color": analogous hue pairing reduces simultaneous
+    contrast harshness while maintaining perceptual brightness).
+
+    Corner marks and border: visible dark navy tones — not pure black, which
+    would look like errors on the navy background.
   -->
 
-  <rect width="1280" height="220" fill="#0a0a0a"/>
+  <rect width="1280" height="220" fill="#0a0e1f"/>
 
-  <!-- Border frame -->
-  <rect x="36" y="18" width="1208" height="184" fill="none" stroke="#1c1c1c" stroke-width="1"/>
+  <!-- Border frame — dark navy, just visible -->
+  <rect x="36" y="18" width="1208" height="184" fill="none" stroke="#151c36" stroke-width="1"/>
 
   <!-- Corner marks — top-left -->
-  <line x1="36"  y1="18"  x2="90"   y2="18"  stroke="#383838" stroke-width="1.5"/>
-  <line x1="36"  y1="18"  x2="36"   y2="72"  stroke="#383838" stroke-width="1.5"/>
+  <line x1="36"   y1="18"  x2="90"   y2="18"  stroke="#1e2a50" stroke-width="1.5"/>
+  <line x1="36"   y1="18"  x2="36"   y2="72"  stroke="#1e2a50" stroke-width="1.5"/>
   <!-- Corner marks — top-right -->
-  <line x1="1244" y1="18"  x2="1190" y2="18"  stroke="#383838" stroke-width="1.5"/>
-  <line x1="1244" y1="18"  x2="1244" y2="72"  stroke="#383838" stroke-width="1.5"/>
+  <line x1="1244" y1="18"  x2="1190" y2="18"  stroke="#1e2a50" stroke-width="1.5"/>
+  <line x1="1244" y1="18"  x2="1244" y2="72"  stroke="#1e2a50" stroke-width="1.5"/>
   <!-- Corner marks — bottom-left -->
-  <line x1="36"  y1="202" x2="90"   y2="202" stroke="#383838" stroke-width="1.5"/>
-  <line x1="36"  y1="202" x2="36"   y2="148" stroke="#383838" stroke-width="1.5"/>
+  <line x1="36"   y1="202" x2="90"   y2="202" stroke="#1e2a50" stroke-width="1.5"/>
+  <line x1="36"   y1="202" x2="36"   y2="148" stroke="#1e2a50" stroke-width="1.5"/>
   <!-- Corner marks — bottom-right -->
-  <line x1="1244" y1="202" x2="1190" y2="202" stroke="#383838" stroke-width="1.5"/>
-  <line x1="1244" y1="202" x2="1244" y2="148" stroke="#383838" stroke-width="1.5"/>
+  <line x1="1244" y1="202" x2="1190" y2="202" stroke="#1e2a50" stroke-width="1.5"/>
+  <line x1="1244" y1="202" x2="1244" y2="148" stroke="#1e2a50" stroke-width="1.5"/>
 
-  <!-- Wordmark: weight 300, pure white, tracking reduced to 22 -->
+  <!-- Wordmark — cool near-white, harmonizes with navy bg -->
   <text
     x="640" y="122"
     font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
     font-size="76"
-    font-weight="300"
-    fill="#ffffff"
+    font-weight="200"
+    fill="#e8edf8"
     text-anchor="middle"
-    letter-spacing="22">AETHEL</text>
+    letter-spacing="30">AETHEL</text>
 
-  <!-- Accent rule — slightly brighter to match increased text luminance -->
-  <line x1="574" y1="142" x2="706" y2="142" stroke="#2a2a2a" stroke-width="1"/>
+  <!-- Accent rule -->
+  <line x1="574" y1="142" x2="706" y2="142" stroke="#1e2a50" stroke-width="1"/>
 
-  <!-- Subtitle: weight 400, brighter for legibility -->
+  <!-- Subtitle -->
   <text
     x="640" y="168"
     font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
     font-size="12"
     font-weight="400"
-    fill="#767676"
+    fill="#3d4f72"
     text-anchor="middle"
     letter-spacing="10">WORKSPACE</text>
 </svg>

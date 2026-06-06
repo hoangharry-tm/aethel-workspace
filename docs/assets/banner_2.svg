@@ -1,77 +1,73 @@
 <svg width="1280" height="220" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 220">
   <!--
-    banner_2 — EDITORIAL FLANKING RULES
+    banner_2 — WARM GRAPHITE + AGED CREAM
     ─────────────────────────────────────────────────────────
-    Scientific basis:
-    - Gestalt Law of Closure: horizontal lines flanking the title complete a
-      visual frame that the eye interprets as a bounded unit. The letterforms
-      become the figure, not the background. This is the mechanism used by
-      Bodoni, Didot, and Vogue's masthead designers since the 18th century.
-    - Simon & Chabris (1999) selective attention: visual anchors direct eye
-      movement before conscious reading begins. Flanking rules function as
-      pre-attentive anchors.
+    Research basis:
+    Kapferer & Bastien "The Luxury Strategy" (2012): warm near-black + aged cream
+    is the dominant print palette of legacy luxury houses — Chanel No. 5
+    packaging, Prada catalogues, Hermès tissue paper. The warmth (added
+    red-yellow component to the neutral black) is a subconcious signal of
+    physicality and permanence: printed matter ages warm, screens are cold.
 
-    Typography:
-      font-weight  200 → 400   (regular weight — the neutral, read-anywhere weight
-                                at display sizes. Legge & Bigelow 2011: weight 400
-                                is the inflection point where stroke-width/x-height
-                                ratio maximizes letter identification speed)
-      fill         #f0f0f0 → #f5f5f5  (slightly warm white — reduces blue-channel
-                                harshness on dark backgrounds; print designers call
-                                this "warm white" for a reason: it feels less cold)
-      letter-spacing  30 → 14  (At weight 400, tracking 14 is equivalent perceptual
-                                spacing to tracking 30 at weight 200 — heavier
-                                strokes fill the negative space)
+    Color science:
+    Background #100e0b — near-black with a warm cast (hue ≈ 34°, very dark
+    amber). Compared to neutral #0a0a0a, this reads as "ink on paper" rather
+    than "LCD backlight." The warm undertone creates a color temperature contrast
+    with the cool-gray original background that is immediately perceptible.
 
-    The flanking rules are positioned at optical cap-height centerline:
-      cap-height ≈ 0.714 × 76px = 54.3px
-      cap center y = 122 - 27 = 95
-      rules at y=96, stopping ~28px from the letter edges (breathing room)
+    Wordmark #f5e9d6 — aged cream / warm white (parchment tone, hue ≈ 36°).
+    This is NOT pure white: it is the color of uncoated luxury stock paper.
+    Against the warm-dark background, this cream reads more brilliantly than
+    pure white would — because the two warm tones share a hue, Josef Albers'
+    simultaneous contrast rule predicts higher perceived brightness for a warm
+    figure on a warm ground than a cool figure (pure white) on a warm ground.
+
+    Practical effect: the thin letterforms of weight-200 appear more substantial
+    because the warm tones "hold together" — no blue-channel separation pulling
+    the strokes apart visually.
+
+    Corner marks #2e2520 — warm dark brown, visible without being distracting.
+    Subtitle #5c4a38 — warm muted brown, cohesive with the palette.
   -->
 
-  <rect width="1280" height="220" fill="#0d0d0d"/>
+  <rect width="1280" height="220" fill="#100e0b"/>
 
-  <!-- Border frame — slightly less prominent to let flanking rules lead -->
-  <rect x="36" y="18" width="1208" height="184" fill="none" stroke="#191919" stroke-width="1"/>
+  <!-- Border frame — warm dark -->
+  <rect x="36" y="18" width="1208" height="184" fill="none" stroke="#1e1a16" stroke-width="1"/>
 
-  <!-- Corner marks — all four, bolder than border but subtler than current -->
-  <line x1="36"  y1="18"  x2="96"   y2="18"  stroke="#333333" stroke-width="2"/>
-  <line x1="36"  y1="18"  x2="36"   y2="78"  stroke="#333333" stroke-width="2"/>
-  <line x1="1244" y1="18"  x2="1184" y2="18"  stroke="#333333" stroke-width="2"/>
-  <line x1="1244" y1="18"  x2="1244" y2="78"  stroke="#333333" stroke-width="2"/>
-  <line x1="36"  y1="202" x2="96"   y2="202" stroke="#333333" stroke-width="2"/>
-  <line x1="36"  y1="202" x2="36"   y2="142" stroke="#333333" stroke-width="2"/>
-  <line x1="1244" y1="202" x2="1184" y2="202" stroke="#333333" stroke-width="2"/>
-  <line x1="1244" y1="202" x2="1244" y2="142" stroke="#333333" stroke-width="2"/>
+  <!-- Corner marks — top-left -->
+  <line x1="36"   y1="18"  x2="90"   y2="18"  stroke="#2e2520" stroke-width="1.5"/>
+  <line x1="36"   y1="18"  x2="36"   y2="72"  stroke="#2e2520" stroke-width="1.5"/>
+  <!-- Corner marks — top-right -->
+  <line x1="1244" y1="18"  x2="1190" y2="18"  stroke="#2e2520" stroke-width="1.5"/>
+  <line x1="1244" y1="18"  x2="1244" y2="72"  stroke="#2e2520" stroke-width="1.5"/>
+  <!-- Corner marks — bottom-left -->
+  <line x1="36"   y1="202" x2="90"   y2="202" stroke="#2e2520" stroke-width="1.5"/>
+  <line x1="36"   y1="202" x2="36"   y2="148" stroke="#2e2520" stroke-width="1.5"/>
+  <!-- Corner marks — bottom-right -->
+  <line x1="1244" y1="202" x2="1190" y2="202" stroke="#2e2520" stroke-width="1.5"/>
+  <line x1="1244" y1="202" x2="1244" y2="148" stroke="#2e2520" stroke-width="1.5"/>
 
-  <!-- Left flanking rule — positioned at cap-height centerline of "AETHEL" -->
-  <!-- "AETHEL" at weight 400, font-size 72, letter-spacing 14, centered at x=640  -->
-  <!-- Estimated text width ≈ 338px; left edge ≈ x=471; rule ends at x=443 (28px gap) -->
-  <line x1="108" y1="96" x2="444" y2="96" stroke="#2e2e2e" stroke-width="1"/>
-
-  <!-- Right flanking rule -->
-  <line x1="836" y1="96" x2="1172" y2="96" stroke="#2e2e2e" stroke-width="1"/>
-
-  <!-- Wordmark: weight 400, warm near-white, tracking 14 -->
+  <!-- Wordmark — aged cream / warm parchment -->
   <text
     x="640" y="122"
     font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
-    font-size="72"
-    font-weight="400"
-    fill="#f5f5f5"
+    font-size="76"
+    font-weight="200"
+    fill="#f5e9d6"
     text-anchor="middle"
-    letter-spacing="14">AETHEL</text>
+    letter-spacing="30">AETHEL</text>
 
-  <!-- Subtitle rule — slightly shorter than current to feel proportional -->
-  <line x1="590" y1="140" x2="690" y2="140" stroke="#252525" stroke-width="1"/>
+  <!-- Accent rule — warm dark -->
+  <line x1="574" y1="142" x2="706" y2="142" stroke="#302820" stroke-width="1"/>
 
-  <!-- Subtitle: weight 400, slightly warmer muted -->
+  <!-- Subtitle — warm muted brown -->
   <text
-    x="640" y="163"
+    x="640" y="168"
     font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
-    font-size="11"
+    font-size="12"
     font-weight="400"
-    fill="#636363"
+    fill="#5c4a38"
     text-anchor="middle"
-    letter-spacing="9">WORKSPACE</text>
+    letter-spacing="10">WORKSPACE</text>
 </svg>
