@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="320" viewBox="0 0 700 320">
+  <!-- Background -->
+  <rect width="700" height="320" fill="#ffffff"/>
+
+  <!-- Column layout:
+       Label col: x=0, w=280
+       USER col:  x=280, w=105
+       RECEPTION: x=385, w=105
+       ADMIN:     x=490, w=105
+       SYS_ADMIN: x=595, w=105
+       Total: 700
+  -->
+  <!-- Row layout:
+       Header row: y=0, h=40
+       Data rows: 8 rows × 35px = 280px → total = 320
+  -->
+
+  <!-- Header row background -->
+  <rect x="0" y="0" width="700" height="40" fill="#1e293b"/>
+
+  <!-- Header text -->
+  <text x="140" y="25" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff">Permission</text>
+  <text x="332" y="25" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff">USER</text>
+  <text x="437" y="25" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff">RECEPTION</text>
+  <text x="542" y="25" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff">ADMIN</text>
+  <text x="647" y="25" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#e2e8f0">SYS_ADMIN</text>
+
+  <!-- Vertical dividers in header -->
+  <line x1="280" y1="0" x2="280" y2="40" stroke="#334155" stroke-width="1"/>
+  <line x1="385" y1="0" x2="385" y2="40" stroke="#334155" stroke-width="1"/>
+  <line x1="490" y1="0" x2="490" y2="40" stroke="#334155" stroke-width="1"/>
+  <line x1="595" y1="0" x2="595" y2="40" stroke="#334155" stroke-width="1"/>
+
+  <!-- ROW 1: View Documents — y=40, h=35, bg=#f8fafc -->
+  <rect x="0" y="40" width="700" height="35" fill="#f8fafc"/>
+  <text x="16" y="62" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#334155">View Documents</text>
+  <text x="332" y="63" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+  <text x="437" y="63" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+  <text x="542" y="63" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+  <text x="647" y="63" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+
+  <!-- ROW 2: Create Dispatch — y=75, h=35, bg=#ffffff -->
+  <rect x="0" y="75" width="700" height="35" fill="#ffffff"/>
+  <text x="16" y="97" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#334155">Create Dispatch</text>
+  <text x="332" y="98" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="437" y="98" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+  <text x="542" y="98" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+  <text x="647" y="98" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+
+  <!-- ROW 3: Approve Green Notes — y=110, h=35, bg=#f8fafc -->
+  <rect x="0" y="110" width="700" height="35" fill="#f8fafc"/>
+  <text x="16" y="132" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#334155">Approve Green Notes</text>
+  <text x="332" y="133" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="437" y="133" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="542" y="133" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+  <text x="647" y="133" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+
+  <!-- ROW 4: Manage Routing Rules — y=145, h=35, bg=#ffffff -->
+  <rect x="0" y="145" width="700" height="35" fill="#ffffff"/>
+  <text x="16" y="167" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#334155">Manage Routing Rules</text>
+  <text x="332" y="168" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="437" y="168" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="542" y="168" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+  <text x="647" y="168" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+
+  <!-- ROW 5: View Audit Log — y=180, h=35, bg=#f8fafc -->
+  <rect x="0" y="180" width="700" height="35" fill="#f8fafc"/>
+  <text x="16" y="202" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#334155">View Audit Log</text>
+  <text x="332" y="203" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="437" y="203" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="542" y="203" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+  <text x="647" y="203" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#10b981">●</text>
+
+  <!-- ROW 6: Verify Audit Chain — y=215, h=35, bg=#ffffff, SYS_ADMIN only -->
+  <rect x="0" y="215" width="700" height="35" fill="#ffffff"/>
+  <!-- SYS_ADMIN column tinted -->
+  <rect x="595" y="215" width="105" height="35" fill="#f0f0ff"/>
+  <text x="16" y="237" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#334155">Verify Audit Chain</text>
+  <text x="332" y="238" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="437" y="238" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="542" y="238" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="647" y="238" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14">&#x1F512;</text>
+
+  <!-- ROW 7: Manage Users — y=250, h=35, bg=#f8fafc, SYS_ADMIN only -->
+  <rect x="0" y="250" width="700" height="35" fill="#f8fafc"/>
+  <rect x="595" y="250" width="105" height="35" fill="#eeeeff"/>
+  <text x="16" y="272" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#334155">Manage Users</text>
+  <text x="332" y="273" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="437" y="273" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="542" y="273" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="647" y="273" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14">&#x1F512;</text>
+
+  <!-- ROW 8: Change Branding — y=285, h=35, bg=#ffffff, SYS_ADMIN only -->
+  <rect x="0" y="285" width="700" height="35" fill="#ffffff"/>
+  <rect x="595" y="285" width="105" height="35" fill="#f0f0ff"/>
+  <text x="16" y="307" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#334155">Change Branding</text>
+  <text x="332" y="308" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="437" y="308" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="542" y="308" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="300" fill="#94a3b8">–</text>
+  <text x="647" y="308" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14">&#x1F512;</text>
+
+  <!-- Vertical dividers across all rows -->
+  <line x1="280" y1="40" x2="280" y2="320" stroke="#e2e8f0" stroke-width="1"/>
+  <line x1="385" y1="40" x2="385" y2="320" stroke="#e2e8f0" stroke-width="1"/>
+  <line x1="490" y1="40" x2="490" y2="320" stroke="#e2e8f0" stroke-width="1"/>
+  <line x1="595" y1="40" x2="595" y2="320" stroke="#cbd5e1" stroke-width="1"/>
+
+  <!-- Outer border -->
+  <rect x="0" y="0" width="700" height="320" rx="0" ry="0" fill="none" stroke="#e2e8f0" stroke-width="1"/>
+</svg>
