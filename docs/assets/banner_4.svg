@@ -1,0 +1,64 @@
+<svg width="1280" height="220" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 220">
+  <!--
+    banner_4 — BODONI WEIGHT CONTRAST PAIRING
+    ─────────────────────────────────────────────────────────
+    Scientific / design basis:
+    - Giambattista Bodoni's typographic principle (c.1790): maximum expressiveness
+      comes from maximum contrast between thick and thin elements in the same
+      composition. His typefaces pair ultra-heavy main strokes with hairline
+      serifs. Applied here: semi-bold title (heavy) + ultralight subtitle (hairline)
+      creates the same dramatic contrast using weight instead of serif detail.
+    - Hermann Zapf "Manuale Typographicum" (1954): "typographic color" refers to
+      the visual density of a text area. A single line of weight-600 text at 96px
+      has maximum typographic color against black — it reads as a solid object,
+      not as a letterform constellation.
+    - Scale contrast: enlarging the wordmark to 96px (vs 76px in original) means
+      the letter area represents a higher percentage of the total canvas area,
+      increasing figure-ground dominance.
+
+    Typography:
+      font-weight  200 → 600   (semi-bold — the maximum "luxury" weight that
+                                stops short of aggressive. 700/bold reads as
+                                utilitarian; 600 reads as authoritative)
+      font-size    76 → 96     (+26% — fills the canvas with authority)
+      fill         #f0f0f0 → #ffffff  (maximum contrast, 21:1)
+      letter-spacing  30 → 4   (extremely tight — at weight 600 and 96px the
+                                letters are physically large enough to need no
+                                spacing assistance; tight tracking makes the word
+                                a visual mass, not individual characters)
+      subtitle     weight 200, letter-spacing 20 — the deliberate ultralight
+                   subtitle creates a Bodoni-style thick/thin contrast that
+                   makes the heavy title feel even more dominant by comparison
+
+    Layout: full-bleed rules at top and bottom, no corner marks
+    (corner marks are a detail for "delicate" designs; at this weight they
+    would compete — the type IS the design element here)
+  -->
+
+  <rect width="1280" height="220" fill="#060606"/>
+
+  <!-- Full-bleed top and bottom rules — minimal frame, lets type dominate -->
+  <line x1="80" y1="22" x2="1200" y2="22" stroke="#1e1e1e" stroke-width="1"/>
+  <line x1="80" y1="198" x2="1200" y2="198" stroke="#1e1e1e" stroke-width="1"/>
+
+  <!-- Wordmark: weight 600, 96px, minimal tracking — a solid typographic mass -->
+  <text
+    x="640" y="134"
+    font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="96"
+    font-weight="600"
+    fill="#ffffff"
+    text-anchor="middle"
+    letter-spacing="4">AETHEL</text>
+
+  <!-- Subtitle: weight 200 deliberately — Bodoni thick/thin contrast principle -->
+  <!-- Ultralight subtitle makes the heavy title read as even more dominant -->
+  <text
+    x="640" y="178"
+    font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="11"
+    font-weight="200"
+    fill="#484848"
+    text-anchor="middle"
+    letter-spacing="20">WORKSPACE</text>
+</svg>

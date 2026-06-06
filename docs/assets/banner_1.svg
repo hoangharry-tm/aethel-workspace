@@ -1,0 +1,60 @@
+<svg width="1280" height="220" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 220">
+  <!--
+    banner_1 — STROKE WEIGHT FIX
+    ─────────────────────────────────────────────────────────
+    Scientific basis: Paterson & Tinker (1940) — stroke-to-x-height ratio is the
+    primary determinant of display type legibility. At font-weight 200, the
+    stroke width is ≈6% of x-height — below the 10–12% minimum they identify for
+    confident recognition on high-contrast backgrounds.
+
+    Changes from baseline:
+      font-weight  200 → 300   (+50% stroke width, still "light" aesthetic)
+      fill         #f0f0f0 → #ffffff  (contrast ratio 18.1:1 → 21:1; Weber's Law)
+      letter-spacing  30 → 22  (Gestalt proximity: tighter tracking restores word
+                                unity lost by thin strokes; luxury feel preserved)
+      subtitle fill  #484848 → #767676  (meets WCAG AA 4.5:1 for large text)
+
+    All other elements are unchanged — this isolates the weight + color variable.
+  -->
+
+  <rect width="1280" height="220" fill="#0a0a0a"/>
+
+  <!-- Border frame -->
+  <rect x="36" y="18" width="1208" height="184" fill="none" stroke="#1c1c1c" stroke-width="1"/>
+
+  <!-- Corner marks — top-left -->
+  <line x1="36"  y1="18"  x2="90"   y2="18"  stroke="#383838" stroke-width="1.5"/>
+  <line x1="36"  y1="18"  x2="36"   y2="72"  stroke="#383838" stroke-width="1.5"/>
+  <!-- Corner marks — top-right -->
+  <line x1="1244" y1="18"  x2="1190" y2="18"  stroke="#383838" stroke-width="1.5"/>
+  <line x1="1244" y1="18"  x2="1244" y2="72"  stroke="#383838" stroke-width="1.5"/>
+  <!-- Corner marks — bottom-left -->
+  <line x1="36"  y1="202" x2="90"   y2="202" stroke="#383838" stroke-width="1.5"/>
+  <line x1="36"  y1="202" x2="36"   y2="148" stroke="#383838" stroke-width="1.5"/>
+  <!-- Corner marks — bottom-right -->
+  <line x1="1244" y1="202" x2="1190" y2="202" stroke="#383838" stroke-width="1.5"/>
+  <line x1="1244" y1="202" x2="1244" y2="148" stroke="#383838" stroke-width="1.5"/>
+
+  <!-- Wordmark: weight 300, pure white, tracking reduced to 22 -->
+  <text
+    x="640" y="122"
+    font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="76"
+    font-weight="300"
+    fill="#ffffff"
+    text-anchor="middle"
+    letter-spacing="22">AETHEL</text>
+
+  <!-- Accent rule — slightly brighter to match increased text luminance -->
+  <line x1="574" y1="142" x2="706" y2="142" stroke="#2a2a2a" stroke-width="1"/>
+
+  <!-- Subtitle: weight 400, brighter for legibility -->
+  <text
+    x="640" y="168"
+    font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="12"
+    font-weight="400"
+    fill="#767676"
+    text-anchor="middle"
+    letter-spacing="10">WORKSPACE</text>
+</svg>

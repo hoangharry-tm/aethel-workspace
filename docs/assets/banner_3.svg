@@ -1,0 +1,66 @@
+<svg width="1280" height="220" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 220">
+  <!--
+    banner_3 — SWISS INTERNATIONAL STYLE (Tschichold / Müller-Brockmann)
+    ─────────────────────────────────────────────────────────
+    Scientific / design basis:
+    - Jan Tschichold "Die neue Typographie" (1928): asymmetric axis creates
+      dynamic tension that centered layouts cannot. The eye doesn't land at a
+      fixed midpoint — it traces a path from the left anchor outward, giving
+      the composition energy.
+    - Josef Müller-Brockmann grid theory: a strong left-margin anchor (here: the
+      vertical accent bar) creates a visual "spine" the eye returns to. This is
+      more legible at a glance than floating centered text.
+    - The vertical accent bar in the brand color (#4f46e5 indigo) solves two
+      problems: it creates a high-contrast edge that makes the first letter of
+      "AETHEL" immediately readable, AND it is a brand-color echo from the
+      application's primary palette.
+
+    Typography:
+      font-weight  200 → 500   (medium — the highest weight before "bold"
+                                territory; strokes are thick enough to dominate
+                                the dark field with authority)
+      font-size    76 → 82     (slightly larger; at left-aligned layout the
+                                extra scale fills the canvas without feeling
+                                claustrophobic)
+      fill         #f0f0f0 → #ffffff  (maximum contrast)
+      letter-spacing  30 → 8   (Swiss style: tension through density; the word
+                                is a solid block, not a dispersed constellation)
+      text-anchor  middle → start (left-aligned; left edge at x=96)
+
+    Visual weight distribution: heavy on the left, open on the right —
+    the classic "reading direction" layout that Western audiences process
+    fastest (Nielsen Norman F-pattern research, 2006).
+  -->
+
+  <rect width="1280" height="220" fill="#0a0a0a"/>
+
+  <!-- Subtle top border line -->
+  <line x1="0" y1="0" x2="1280" y2="0" stroke="#181818" stroke-width="2"/>
+
+  <!-- Vertical brand accent bar — positioned left of text baseline -->
+  <!-- Spans y=50 to y=175 (covering both text lines with padding) -->
+  <line x1="68" y1="50" x2="68" y2="175" stroke="#4f46e5" stroke-width="3"/>
+
+  <!-- Wordmark: weight 500, left-aligned, tight tracking -->
+  <text
+    x="96" y="130"
+    font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="82"
+    font-weight="500"
+    fill="#ffffff"
+    text-anchor="start"
+    letter-spacing="8">AETHEL</text>
+
+  <!-- Subtitle: left-aligned, weight 300, wide tracking for contrast with title -->
+  <text
+    x="99" y="163"
+    font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="12"
+    font-weight="300"
+    fill="#555555"
+    text-anchor="start"
+    letter-spacing="6">WORKSPACE</text>
+
+  <!-- Bottom rule: full bleed, very subtle — grounds the composition -->
+  <line x1="0" y1="219" x2="1280" y2="219" stroke="#181818" stroke-width="2"/>
+</svg>
